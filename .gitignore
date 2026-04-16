@@ -1,3 +1,18 @@
-node_modules
+# Node
+node_modules/
+
+# Env
 .env
+venv/
+__pycache__/
+
+# Database
 mindease.db
+
+# ML files (IMPORTANT)
+backend/models/
+backend/datasets/
+
+# Data files
+*.csv
+*.ipynb
