@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRISIS ALERT - IMMEDIATE HELP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #8B0000;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        .alert-header {
+            background: #FF0000;
+            padding: 10px;
+            text-align: center;
+            animation: pulse 1s infinite;
+        }
+
+        .alert-header h1 {
+            font-size: 1.8em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin: 5px 0;
+        }
+
+        .danger-symbol {
+            font-size: 2em;
+            color: #FFD700;
+            animation: blink 0.5s infinite;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            padding: 10px;
+            height: calc(100vh - 180px);
+        }
+
+        .section {
+            background: #660000;
+            border: 2px solid #FF0000;
+            border-radius: 8px;
+            padding: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section h2 {
+            color: #FFD700;
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #FF0000;
+        }
+
+        .emergency-card {
+            background: #8B0000;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #FFD700;
+            text-align: center;
+        }
+
+        .emergency-card h3 {
+            color: #FFD700;
+            font-size: 1em;
+            margin-bottom: 3px;
+        }
+
+        .emergency-card .number {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #FFFFFF;
+        }
+
+        .technique-content {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .technique-steps {
+            list-style: none;
+            font-size: 0.85em;
+        }
+
+        .technique-steps li {
+            margin: 3px 0;
+            padding: 5px;
+            background: #8B0000;
+            border-radius: 3px;
+            border-left: 3px solid #FFD700;
+        }
+
+        .technique-steps li strong {
+            color: #FFD700;
+            font-size: 0.9em;
+        }
+
+        .phrases {
+            font-size: 0.8em;
+            margin: 5px 0;
+            padding: 5px;
+            background: #8B0000;
+            border-radius: 3px;
+            line-height: 1.3;
+        }
+
+        .footer {
+            background: #660000;
+            padding: 10px;
+            text-align: center;
+            border-top: 3px solid #FF0000;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .close-btn {
+            background: #FF0000;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            font-size: 0.9em;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            background: #CC0000;
+        }
+
+        @keyframes pulse {
+            0% { background: #FF0000; }
+            50% { background: #FF6666; }
+            100% { background: #FF0000; }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="alert-header">
+        <div class="danger-symbol">! DANGER !</div>
+        <h1>CRISIS DETECTED</h1>
+        <p>IMMEDIATE ACTION REQUIRED</p>
+    </div>
+
+    <div class="main-content">
+        <!-- EMERGENCY CONTACTS -->
+        <div class="section">
+            <h2>EMERGENCY CONTACTS</h2>
+            <div class="emergency-card">
+                <h3>Emergency Services</h3>
+                <div class="number">911</div>
+                <p>Call immediately</p>
+            </div>
+            <div class="emergency-card">
+                <h3>Suicide Hotline</h3>
+                <div class="number">988</div>
+                <p>24/7 Free Support</p>
+            </div>
+            <div class="emergency-card">
+                <h3>Crisis Text</h3>
+                <div class="number">Text HOME to 741741</div>
+                <p>24/7 Text Support</p>
+            </div>
+        </div>
+
+        <!-- BREATHING EXERCISE -->
+        <div class="section">
+            <h2>BREATHING EXERCISE</h2>
+            <div class="technique-content">
+                <h3>4-7-8 Technique</h3>
+                <ul class="technique-steps">
+                    <li><strong>1:</strong> Sit comfortably</li>
+                    <li><strong>2:</strong> Inhale 4 seconds (nose)</li>
+                    <li><strong>3:</strong> Hold 7 seconds</li>
+                    <li><strong>4:</strong> Exhale 8 seconds (mouth)</li>
+                    <li><strong>5:</strong> Repeat 3-4 times</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- CRISIS COUNSELING -->
+        <div class="section">
+            <h2>CRISIS COUNSELING</h2>
+            <div class="technique-content">
+                <h3>Immediate Support</h3>
+                <ul class="technique-steps">
+                    <li><strong>1:</strong> Stay calm, gentle voice</li>
+                    <li><strong>2:</strong> Validate feelings</li>
+                    <li><strong>3:</strong> Listen without judgment</li>
+                    <li><strong>4:</strong> Remind not alone</li>
+                    <li><strong>5:</strong> Focus on present</li>
+                </ul>
+                <div class="phrases">
+                    <strong>Supportive Phrases:</strong><br>
+                    "I'm here for you and I care about you"<br>
+                    "Your life matters and you are important"<br>
+                    "These feelings will pass"<br>
+                    "You are stronger than you think"
+                </div>
+            </div>
+        </div>
+
+        <!-- GROUNDING TECHNIQUE -->
+        <div class="section">
+            <h2>GROUNDING TECHNIQUE</h2>
+            <div class="technique-content">
+                <h3>5-4-3-2-1 Method</h3>
+                <ul class="technique-steps">
+                    <li><strong>5:</strong> Name 5 things you SEE</li>
+                    <li><strong>4:</strong> Name 4 things you FEEL</li>
+                    <li><strong>3:</strong> Name 3 things you HEAR</li>
+                    <li><strong>2:</strong> Name 2 things you SMELL</li>
+                    <li><strong>1:</strong> Name 1 thing you TASTE</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- SAFETY PLANNING -->
+        <div class="section">
+            <h2>SAFETY PLANNING</h2>
+            <div class="technique-content">
+                <h3>Immediate Safety</h3>
+                <ul class="technique-steps">
+                    <li><strong>1:</strong> Remove means of harm</li>
+                    <li><strong>2:</strong> Create safe environment</li>
+                    <li><strong>3:</strong> Stay with person</li>
+                    <li><strong>4:</strong> Contact professional help</li>
+                    <li><strong>5:</strong> Follow up support</li>
+                </ul>
+                <div class="phrases">
+                    <strong>Professional Help:</strong><br>
+                    Therapists trained for crisis<br>
+                    24/7 crisis hotlines<br>
+                    Emergency crisis teams<br>
+                    Confidential support available
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFESSIONAL HELP -->
+        <div class="section">
+            <h2>PROFESSIONAL HELP</h2>
+            <div class="technique-content">
+                <h3>Get Professional Support</h3>
+                <ul class="technique-steps">
+                    <li><strong>1:</strong> Call therapist/counselor</li>
+                    <li><strong>2:</strong> Contact crisis team</li>
+                    <li><strong>3:</strong> Go to emergency room</li>
+                    <li><strong>4:</strong> Join support group</li>
+                    <li><strong>5:</strong> Follow up regularly</li>
+                </ul>
+                <div class="phrases">
+                    <strong>Remember:</strong><br>
+                    Help is available<br>
+                    You are not alone<br>
+                    Recovery is possible<br>
+                    Support is confidential
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p><strong>DO NOT LEAVE THE PERSON ALONE</strong></p>
+        <button class="close-btn" onclick="handleCrisisResolved()">Close When Resolved</button>
+        <button class="close-btn" onclick="location.reload()">Refresh</button>
+    </div>
+
+    <script>
+        // Alarm control variables
+        let alarmInterval;
+        let alarmCount = 0;
+        let isAlarmActive = true;
+
+        // Play alarm sound
+        function playAlarm() {
+            if (!isAlarmActive) return;
+            
+            try {
+                // Try to play system beep
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 1000; // 1000 Hz
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+            } catch (e) {
+                // Fallback to console beep
+                console.log('\u0007');
+            }
+        }
+
+        // Start alarm
+        function startAlarm() {
+            isAlarmActive = true;
+            alarmInterval = setInterval(() => {
+                playAlarm();
+                alarmCount++;
+                if (alarmCount >= 10) {
+                    stopAlarm();
+                }
+            }, 2000);
+        }
+
+        // Stop alarm
+        function stopAlarm() {
+            isAlarmActive = false;
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
+            }
+            console.log('CRISIS ALARM STOPPED');
+        }
+
+        // Handle crisis resolution
+        function handleCrisisResolved() {
+            stopAlarm();
+            console.log('CRISIS RESOLVED - Alarm stopped');
+            window.close();
+        }
+
+        // Start alarm on page load
+        startAlarm();
+
+        // Auto-refresh every 30 seconds (only if alarm is active)
+        setTimeout(() => {
+            if (isAlarmActive) {
+                location.reload();
+            }
+        }, 30000);
+
+        // Prevent closing accidentally (only if alarm is active)
+        window.addEventListener('beforeunload', function (e) {
+            if (isAlarmActive) {
+                e.preventDefault();
+                e.returnValue = 'Crisis alert is active. Are you sure you want to close?';
+            }
+        });
+
+        // Stop alarm when window is closed
+        window.addEventListener('unload', function () {
+            stopAlarm();
+        });
+    </script>
+</body>
+</html>

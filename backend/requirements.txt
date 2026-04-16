@@ -1,0 +1,24 @@
+# Python Dependencies for MindEase Mental Health Chatbot
+# Updated: April 2026
+
+# Core PyTorch & Transformers
+torch==1.12.1
+transformers==4.21.0
+tokenizers==0.12.1
+
+# Data Processing
+datasets==2.0.0
+numpy==1.21.0
+
+# Flask Web Framework
+flask==2.0.1
+flask-cors==3.0.10
+
+# Web & Utilities
+requests>=2.28.1
+python-dotenv==0.19.0
+
+# Note: For production, consider upgrading PyTorch to 2.4+ for better model loading
+# pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0
+
+# Speech-to-Text & Translation: Now using Web Speech API (browser-based)

@@ -1,0 +1,57 @@
+{
+  "yoga_exercises": [
+    {
+      "name": "Child's Pose (Balasana)",
+      "description": "A gentle resting pose that calms the mind",
+      "steps": [
+        "Kneel on the floor with your big toes touching",
+        "Spread your knees hip-width apart",
+        "Exhale and fold forward, resting your torso between your thighs",
+        "Rest your forehead on the floor",
+        "Extend your arms forward or alongside your body",
+        "Hold for 30 seconds to 3 minutes"
+      ],
+      "benefits": ["Relieves back pain", "Calms the mind", "Reduces stress"],
+      "difficulty": "Beginner"
+    },
+    {
+      "name": "Cat-Cow Pose (Marjaryasana-Bitilasana)",
+      "description": "Gentle spinal movement that releases tension",
+      "steps": [
+        "Start on your hands and knees",
+        "Inhale: arch your back, look up (Cow pose)",
+        "Exhale: round your spine, tuck chin (Cat pose)",
+        "Continue flowing between poses for 1-2 minutes",
+        "Focus on your breath matching the movement"
+      ],
+      "benefits": ["Improves posture", "Relieves back tension", "Calms nervous system"],
+      "difficulty": "Beginner"
+    },
+    {
+      "name": "Legs Up the Wall (Viparita Karani)",
+      "description": "Restorative inversion that reduces anxiety",
+      "steps": [
+        "Sit with your right side against a wall",
+        "Swing your legs up the wall as you lie back",
+        "Rest your arms alongside your body, palms up",
+        "Close your eyes and breathe deeply",
+        "Hold for 5-15 minutes"
+      ],
+      "benefits": ["Reduces anxiety", "Improves circulation", "Relieves tired legs"],
+      "difficulty": "Beginner"
+    },
+    {
+      "name": "Corpse Pose (Savasana)",
+      "description": "Deep relaxation and meditation pose",
+      "steps": [
+        "Lie on your back with legs slightly apart",
+        "Let your arms rest alongside your body, palms up",
+        "Close your eyes and relax your entire body",
+        "Focus on your breath without trying to control it",
+        "Stay for 5-10 minutes"
+      ],
+      "benefits": ["Reduces blood pressure", "Calms nervous system", "Improves sleep"],
+      "difficulty": "Beginner"
+    }
+  ]
+}

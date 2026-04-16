@@ -1,0 +1,52 @@
+{
+  "grounding_techniques": [
+    {
+      "name": "5-4-3-2-1 Grounding",
+      "description": "Engage all five senses to return to the present moment",
+      "steps": [
+        "Name 5 things you can SEE around you",
+        "Name 4 things you can FEEL (your clothes, chair, etc.)",
+        "Name 3 things you can HEAR right now",
+        "Name 2 things you can SMELL",
+        "Name 1 thing you can TASTE"
+      ],
+      "benefits": ["Reduces panic", "Increases awareness", "Breaks dissociation"]
+    },
+    {
+      "name": "Body Scan",
+      "description": "Systematically focus on each part of your body",
+      "steps": [
+        "Lie down comfortably and close your eyes",
+        "Start at your toes and slowly move up your body",
+        "Notice any sensations without judgment",
+        "Tense and relax each muscle group briefly",
+        "Complete scan in 5-10 minutes"
+      ],
+      "benefits": ["Reduces tension", "Improves body awareness", "Promotes relaxation"]
+    },
+    {
+      "name": "Progressive Muscle Relaxation",
+      "description": "Tense and relax muscle groups to release physical tension",
+      "steps": [
+        "Start with your feet and toes",
+        "Tense muscles for 5 seconds, then relax for 10 seconds",
+        "Work your way up through legs, torso, arms, and face",
+        "Notice the difference between tension and relaxation",
+        "Complete the entire sequence twice"
+      ],
+      "benefits": ["Reduces physical tension", "Lowers stress hormones", "Improves sleep"]
+    },
+    {
+      "name": "Safe Place Visualization",
+      "description": "Create a mental sanctuary for immediate comfort",
+      "steps": [
+        "Close your eyes and imagine a place where you feel completely safe",
+        "Engage all senses - what do you see, hear, smell, feel?",
+        "Add details that make it comforting and peaceful",
+        "Spend 3-5 minutes in this safe mental space",
+        "Return to the present feeling calmer and more centered"
+      ],
+      "benefits": ["Provides quick relief", "Creates mental sanctuary", "Reduces anxiety"]
+    }
+  ]
+}

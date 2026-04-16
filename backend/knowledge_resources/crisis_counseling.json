@@ -1,0 +1,76 @@
+{
+  "crisis_counseling": [
+    {
+      "title": "Immediate Crisis Support",
+      "description": "What to say and do right now in a crisis situation",
+      "steps": [
+        "Stay calm and speak in a gentle, reassuring voice",
+        "Validate their feelings: 'I can see how much pain you're in'",
+        "Listen without judgment - don't try to 'fix' everything",
+        "Remind them they're not alone: 'I'm here with you'",
+        "Focus on the present moment: 'Let's get through this together'"
+      ],
+      "phrases": [
+        "I'm here for you and I care about you",
+        "Your life matters and you are important",
+        "These feelings will pass, even if it doesn't feel like it",
+        "You are stronger than you think right now",
+        "Let's take this one moment at a time"
+      ]
+    },
+    {
+      "title": "Safety Planning",
+      "description": "Creating immediate safety in a crisis",
+      "steps": [
+        "Remove any immediate means of harm if possible",
+        "Create a safe environment (calm, quiet space)",
+        "Stay with the person - don't leave them alone",
+        "Contact professional help immediately",
+        "Follow up with ongoing support"
+      ],
+      "actions": [
+        "Call 911 or emergency services",
+        "Contact suicide hotline: 988",
+        "Reach out to trusted friends/family",
+        "Remove medications, weapons, or other harmful items",
+        "Create a calm, safe space"
+      ]
+    },
+    {
+      "title": "Validation and Hope",
+      "description": "Providing emotional support and hope",
+      "phrases": [
+        "I understand how overwhelming this feels",
+        "Your pain is real and valid",
+        "Many people have felt this way and found hope",
+        "You deserve support and help",
+        "There are people who want to help you through this"
+      ],
+      "encouragement": [
+        "You've already taken a brave step by reaching out",
+        "Healing is possible, even when it seems impossible",
+        "You are not defined by this moment",
+        "Your life has value and purpose",
+        "This pain doesn't have to be permanent"
+      ]
+    },
+    {
+      "title": "Professional Help Guidance",
+      "description": "Guiding toward professional support",
+      "steps": [
+        "Explain that professionals are trained to help",
+        "Normalize seeking mental health support",
+        "Offer to help make the call",
+        "Stay with them during the call",
+        "Reassure them it's confidential and judgment-free"
+      ],
+      "resources": [
+        "Therapists and counselors are trained specifically for these situations",
+        "Crisis hotlines are available 24/7 with trained professionals",
+        "Emergency rooms have crisis intervention teams",
+        "Mental health professionals can provide ongoing support",
+        "Support groups connect people with similar experiences"
+      ]
+    }
+  ]
+}
