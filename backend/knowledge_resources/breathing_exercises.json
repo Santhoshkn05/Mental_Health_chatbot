@@ -1,0 +1,40 @@
+{
+  "breathing_exercises": [
+    {
+      "name": "4-7-8 Breathing",
+      "description": "A simple but powerful relaxation technique",
+      "steps": [
+        "Sit or lie down comfortably",
+        "Inhale through your nose for 4 seconds",
+        "Hold your breath for 7 seconds",
+        "Exhale slowly through your mouth for 8 seconds",
+        "Repeat 3-4 times"
+      ],
+      "benefits": ["Reduces anxiety", "Lowers heart rate", "Calms nervous system"]
+    },
+    {
+      "name": "Box Breathing",
+      "description": "Used by Navy SEALs to stay calm under pressure",
+      "steps": [
+        "Inhale slowly for 4 seconds",
+        "Hold your breath for 4 seconds",
+        "Exhale slowly for 4 seconds",
+        "Wait for 4 seconds before inhaling again",
+        "Repeat for 5-10 minutes"
+      ],
+      "benefits": ["Improves focus", "Reduces stress", "Increases oxygen flow"]
+    },
+    {
+      "name": "Diaphragmatic Breathing",
+      "description": "Deep belly breathing for relaxation",
+      "steps": [
+        "Lie on your back with knees bent",
+        "Place one hand on your chest, one on your belly",
+        "Breathe in through your nose, letting your belly rise",
+        "Breathe out through pursed lips, letting your belly fall",
+        "Practice for 5-10 minutes daily"
+      ],
+      "benefits": ["Reduces cortisol", "Improves digestion", "Strengthens diaphragm"]
+    }
+  ]
+}
