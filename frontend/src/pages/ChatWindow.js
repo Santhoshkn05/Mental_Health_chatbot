@@ -1,495 +1,2154 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Brain, Send, Mic, MicOff, User, Bot } from "lucide-react";
+import {
+  Brain,
+  Send,
+  Mic,
+  MicOff,
+  User,
+  Bot,
+  Sparkles,
+  Heart,
+  Moon,
+  Wind,
+  BookOpen,
+  ArrowUp,
+  X,
+  ShieldCheck
+} from "lucide-react";
 
-const ChatWindow = ({ activeSessionId, sessions, setSessions, theme, defaultQueries, isSidebarOpen }) => {
+const API_URL = process.env.REACT_APP_API_URL;
+
+const normalizeSessionId = (sessionId) =>
+  String(sessionId);
+
+const ChatWindow = ({
+  activeSessionId,
+  setActiveSessionId,
+  sessions,
+  setSessions,
+  theme,
+  defaultQueries,
+  isSidebarOpen
+}) => {
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [liveTranscript, setLiveTranscript] = useState("");
+  const [liveTranscript, setLiveTranscript] =
+    useState("");
+
   const scrollRef = useRef(null);
-  
-  // Refs for audio recording
-  const mediaRecorder = useRef(null);
-  const audioChunks = useRef([]);
-  const silenceTimer = useRef(null);
-  const audioContext = useRef(null);
-  const analyser = useRef(null);
+
   const streamRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // =====================================================
+  // CURRENT SESSION
+  // =====================================================
+
+  const normalizedActiveSessionId =
+    normalizeSessionId(activeSessionId);
+
+  const currentSession =
+    sessions.find(
+      (session) =>
+        normalizeSessionId(session.id) ===
+        normalizedActiveSessionId
+    );
+
+  // =====================================================
+  // AUTO SCROLL
+  // =====================================================
+
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop =
+        scrollRef.current.scrollHeight;
     }
-  }, [sessions, activeSessionId]);
+  }, [
+    sessions,
+    activeSessionId,
+    isTyping
+  ]);
 
-  // Get current session
-  const currentSession = sessions.find(s => s.id === activeSessionId);
-  
-  // Debug: Log session state
+  // =====================================================
+  // FALLBACK SESSION
+  // =====================================================
+
   useEffect(() => {
-    console.log('Session Debug:', {
-      currentSession,
-      activeSessionId,
-      sessions: sessions.length,
-      messages: currentSession?.messages?.length || 0
-    });
-  }, [sessions, activeSessionId, currentSession]);
+    if (
+      !currentSession &&
+      sessions.length > 0 &&
+      setActiveSessionId
+    ) {
+      setActiveSessionId(
+        normalizeSessionId(
+          sessions[0].id
+        )
+      );
+    }
+  }, [
+    currentSession,
+    sessions,
+    setActiveSessionId
+  ]);
 
-  // Save session to user-specific storage
+  // =====================================================
+  // SAVE SESSION
+  // =====================================================
+
   const saveSession = (updatedSession) => {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user =
+      JSON.parse(
+        localStorage.getItem("user")
+      );
+
     if (!user?.email) {
-      console.warn('No authenticated user found');
       return;
     }
-    
-    const userSessionsKey = `mindease-sessions-${user.email}`;
-    const allSessions = JSON.parse(localStorage.getItem(userSessionsKey)) || [];
-    const sessionIndex = allSessions.findIndex(s => s.id === updatedSession.id);
-    
+
+    const userSessionsKey =
+      `mindease-sessions-${user.email}`;
+
+    const allSessions =
+      JSON.parse(
+        localStorage.getItem(
+          userSessionsKey
+        )
+      ) || [];
+
+    const sessionIndex =
+      allSessions.findIndex(
+        (session) =>
+          normalizeSessionId(
+            session.id
+          ) ===
+          normalizeSessionId(
+            updatedSession.id
+          )
+      );
+
     if (sessionIndex !== -1) {
-      allSessions[sessionIndex] = updatedSession;
-      localStorage.setItem(userSessionsKey, JSON.stringify(allSessions));
-      console.log('Session saved to user-specific storage:', user.email);
-    } else {
-      console.warn('Session not found for updating');
+      allSessions[sessionIndex] = {
+        ...updatedSession,
+        id: normalizeSessionId(
+          updatedSession.id
+        )
+      };
+
+      localStorage.setItem(
+        userSessionsKey,
+        JSON.stringify(allSessions)
+      );
     }
   };
 
-  // Enhanced message sending with context management
-  const handleSend = async (textToSend) => {
-  if (!textToSend || !textToSend.trim()) return;
+  // =====================================================
+  // SEND MESSAGE
+  // =====================================================
 
-  const finalInput = textToSend.trim();
+  const handleSend = async (
+    textToSend
+  ) => {
+    if (
+      !textToSend ||
+      !textToSend.trim() ||
+      isTyping
+    ) {
+      return;
+    }
 
-  const token = localStorage.getItem("token");
+    const finalInput =
+      textToSend.trim();
 
-  if (!token) {
-    alert("User not authenticated. Please login again.");
-    return;
-  }
+    const token =
+      localStorage.getItem("token");
 
-  const userMsg = { 
-    role: "user", 
-    text: finalInput, 
-    time: new Date().toLocaleTimeString(),
-    id: Date.now()
-  };
+    if (!token) {
+      alert(
+        "Your session has expired. Please login again."
+      );
 
-  // ✅ Add user message and update title if needed
-  setSessions(prev =>
-    prev.map(s =>
-      s.id === activeSessionId
-        ? {
-            ...s,
-            messages: [...(s.messages || []), userMsg],
-            lastUpdated: new Date().toISOString(),
-            // Update title if it's still "New Chat" and this is the first user message
-            title: s.title === "New Chat" && (!s.messages || s.messages.length === 0)
-              ? (finalInput.length > 30 ? finalInput.substring(0, 30) + '...' : finalInput)
-              : s.title
+      return;
+    }
+
+    let sessionIdToUse =
+      currentSession
+        ? normalizedActiveSessionId
+        : sessions.length > 0
+        ? normalizeSessionId(
+            sessions[0].id
+          )
+        : null;
+
+    // Create fallback session
+    if (!sessionIdToUse) {
+      sessionIdToUse =
+        normalizeSessionId(
+          Date.now()
+        );
+
+      const fallbackSession = {
+        id: sessionIdToUse,
+        title: "New Chat",
+        messages: [],
+        createdAt:
+          new Date().toISOString(),
+        lastUpdated:
+          new Date().toISOString()
+      };
+
+      setSessions((prev) => [
+        fallbackSession,
+        ...prev
+      ]);
+
+      setActiveSessionId(
+        sessionIdToUse
+      );
+    }
+
+    // =================================================
+    // USER MESSAGE
+    // =================================================
+
+    const userMsg = {
+      role: "user",
+      text: finalInput,
+      time:
+        new Date().toLocaleTimeString(
+          [],
+          {
+            hour: "2-digit",
+            minute: "2-digit"
           }
-        : s
-    )
-  );
+        ),
+      id: Date.now()
+    };
 
-  setInput("");
-  setIsTyping(true);
+    setSessions((prev) =>
+      prev.map((session) =>
+        normalizeSessionId(
+          session.id
+        ) === sessionIdToUse
+          ? {
+              ...session,
 
-  try {
-    // ✅ CALL NODE BACKEND (NOT FLASK DIRECTLY)
-    const response = await fetch('http://localhost:3001/api/chats', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`   // 🔥 IMPORTANT
-      },
-      body: JSON.stringify({
-        session_id: activeSessionId,
-        message: finalInput
-      }),
-    });
+              id: normalizeSessionId(
+                session.id
+              ),
 
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
+              messages: [
+                ...(session.messages ||
+                  []),
+                userMsg
+              ],
+
+              title:
+                session.title ===
+                  "New Chat" &&
+                (!session.messages ||
+                  session.messages
+                    .length === 0)
+                  ? finalInput.length >
+                    35
+                    ? `${finalInput.substring(
+                        0,
+                        35
+                      )}...`
+                    : finalInput
+                  : session.title,
+
+              lastUpdated:
+                new Date().toISOString()
+            }
+          : session
+      )
+    );
+
+    setInput("");
+    setIsTyping(true);
+
+    try {
+      // =================================================
+      // NODE BACKEND
+      // =================================================
+
+      const response =
+        await fetch(
+          `${API_URL}/api/chats`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${token}`
+            },
+
+            body: JSON.stringify({
+              session_id:
+                sessionIdToUse,
+
+              message:
+                finalInput
+            })
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Server error: ${response.status}`
+        );
+      }
+
+      const data =
+        await response.json();
+
+      console.log(
+        "MindEase AI:",
+        data
+      );
+
+      // =================================================
+      // AI MESSAGE
+      // =================================================
+
+      const aiMsg = {
+        role: "ai",
+
+        text:
+          data.message ||
+          "I'm here with you. Could you tell me a little more?",
+
+        time:
+          new Date().toLocaleTimeString(
+            [],
+            {
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          ),
+
+        id:
+          Date.now() + 1,
+
+        analysis:
+          data.analysis || {},
+
+        safety:
+          data.safety || {},
+
+        enhanced:
+          data.enhanced || false,
+
+        context_used:
+          data.context_used || false
+      };
+
+      setSessions((prev) =>
+        prev.map((session) =>
+          normalizeSessionId(
+            session.id
+          ) === sessionIdToUse
+            ? {
+                ...session,
+
+                messages: [
+                  ...(session.messages ||
+                    []),
+                  aiMsg
+                ],
+
+                lastUpdated:
+                  new Date().toISOString()
+              }
+            : session
+        )
+      );
+
+    } catch (error) {
+      console.error(
+        "MindEase API Error:",
+        error
+      );
+
+      const errorMsg = {
+        role: "ai",
+
+        text:
+          "I'm having trouble connecting right now. Please try again.",
+
+        time:
+          new Date().toLocaleTimeString(
+            [],
+            {
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          ),
+
+        id:
+          Date.now() + 1,
+
+        error: true
+      };
+
+      setSessions((prev) =>
+        prev.map((session) =>
+          normalizeSessionId(
+            session.id
+          ) === sessionIdToUse
+            ? {
+                ...session,
+
+                messages: [
+                  ...(session.messages ||
+                    []),
+                  errorMsg
+                ]
+              }
+            : session
+        )
+      );
+    } finally {
+      setIsTyping(false);
     }
+  };
 
-    const data = await response.json();
+  // =====================================================
+  // VOICE INPUT
+  // =====================================================
 
-    console.log("✅ AI Response:", data);
+  const toggleRecording =
+    async () => {
+      if (isListening) {
+        stopRecording();
+        return;
+      }
 
-    // ✅ FIXED RESPONSE FIELD
-    const aiMsg = { 
-      role: "ai", 
-      text: data.message || "No response received",
-      time: new Date().toLocaleTimeString(),
-      id: Date.now() + 1,
-      analysis: data.analysis || {}
-    };
-
-    // Add AI response
-    setSessions(prev =>
-      prev.map(s =>
-        s.id === activeSessionId
-          ? {
-              ...s,
-              messages: [...(s.messages || []), aiMsg],
-              lastUpdated: new Date().toISOString()
-            }
-          : s
-      )
-    );
-
-  } catch (error) {
-    console.error(" API Error:", error);
-
-    const errorMsg = {
-      role: "ai",
-      text: "⚠️ Server error. Please try again.",
-      time: new Date().toLocaleTimeString(),
-      id: Date.now() + 1,
-      error: true
-    };
-
-    setSessions(prev =>
-      prev.map(s =>
-        s.id === activeSessionId
-          ? {
-              ...s,
-              messages: [...(s.messages || []), errorMsg]
-            }
-          : s
-      )
-    );
-  } finally {
-    setIsTyping(false);
-  }
-};
-
-  // Voice recording functions
-  const toggleRecording = async () => {
-    if (!isListening) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamRef.current = stream;
-        
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-          recognitionRef.current = new SpeechRecognition();
-          recognitionRef.current.continuous = true;
-          recognitionRef.current.interimResults = true;
-          recognitionRef.current.lang = 'en-US';
-          
-          recognitionRef.current.onresult = (event) => {
-            let finalTranscript = '';
-            let interimTranscript = '';
-            
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-              const transcript = event.results[i][0].transcript;
-              if (event.results[i].isFinal) {
-                finalTranscript += transcript + ' ';
-              } else {
-                interimTranscript += transcript;
+        const SpeechRecognition =
+          window.SpeechRecognition ||
+          window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+          alert(
+            "Voice input is not supported in this browser. Please use Chrome or Edge."
+          );
+
+          return;
+        }
+
+        const stream =
+          await navigator.mediaDevices.getUserMedia(
+            {
+              audio: true
+            }
+          );
+
+        streamRef.current =
+          stream;
+
+        const recognition =
+          new SpeechRecognition();
+
+        recognition.continuous =
+          true;
+
+        recognition.interimResults =
+          true;
+
+        recognition.lang =
+          "en-US";
+
+        recognition.onresult =
+          (event) => {
+            let transcript = "";
+
+            for (
+              let i =
+                event.resultIndex;
+              i <
+              event.results.length;
+              i++
+            ) {
+              transcript +=
+                event.results[i][0]
+                  .transcript;
+            }
+
+            setLiveTranscript(
+              transcript.trim()
+            );
+          };
+
+        recognition.onerror =
+          (event) => {
+            console.error(
+              "Speech recognition error:",
+              event.error
+            );
+
+            stopRecording();
+          };
+
+        recognition.onend =
+          () => {
+            if (
+              isListening
+            ) {
+              try {
+                recognition.start();
+              } catch (error) {
+                console.error(
+                  error
+                );
               }
             }
-            
-            const fullTranscript = finalTranscript + interimTranscript;
-            setLiveTranscript(fullTranscript.trim());
           };
-          
-          recognitionRef.current.start();
-        }
-        
-        audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
-        analyser.current = audioContext.current.createAnalyser();
-        const source = audioContext.current.createMediaStreamSource(stream);
-        source.connect(analyser.current);
-        analyser.current.fftSize = 256;
-        
-        setIsListening(true);
+
+        recognitionRef.current =
+          recognition;
+
+        recognition.start();
+
+        setIsListening(
+          true
+        );
+
       } catch (error) {
-        console.error("Error accessing microphone:", error);
-        alert("Please allow microphone access to use voice features.");
+        console.error(
+          "Microphone error:",
+          error
+        );
+
+        alert(
+          "Please allow microphone access to use voice input."
+        );
       }
-    } else {
-      stopRecording();
-    }
-  };
+    };
+
+  // =====================================================
+  // STOP VOICE
+  // =====================================================
 
   const stopRecording = () => {
-    setIsListening(false);
-    setLiveTranscript("");
-    
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    setIsListening(
+      false
+    );
+
+    if (
+      recognitionRef.current
+    ) {
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.error(
+          error
+        );
+      }
+
+      recognitionRef.current =
+        null;
     }
-    
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    
-    if (audioContext.current && audioContext.current.state !== 'closed') {
-      audioContext.current.close();
+
+    if (
+      streamRef.current
+    ) {
+      streamRef.current
+        .getTracks()
+        .forEach(
+          (track) =>
+            track.stop()
+        );
+
+      streamRef.current =
+        null;
     }
   };
 
-  // Handle live transcript submission
-  const handleTranscriptSubmit = () => {
-    if (liveTranscript.trim()) {
-      handleSend(liveTranscript);
-      setLiveTranscript("");
-    }
-  };
+  // =====================================================
+  // SEND VOICE TRANSCRIPT
+  // =====================================================
+
+  const sendVoiceMessage =
+    () => {
+      if (
+        liveTranscript.trim()
+      ) {
+        const transcript =
+          liveTranscript.trim();
+
+        setLiveTranscript("");
+
+        stopRecording();
+
+        handleSend(
+          transcript
+        );
+      }
+    };
+
+  // =====================================================
+  // RECOMMENDATION HANDLER
+  // =====================================================
+
+  const handleRecommendation =
+    (query) => {
+      handleSend(
+        query.text
+      );
+    };
+
+  // =====================================================
+  // CLEANUP
+  // =====================================================
+
+  useEffect(() => {
+    return () => {
+      if (
+        recognitionRef.current
+      ) {
+        try {
+          recognitionRef.current.stop();
+        } catch (error) {}
+      }
+
+      if (
+        streamRef.current
+      ) {
+        streamRef.current
+          .getTracks()
+          .forEach(
+            (track) =>
+              track.stop()
+          );
+      }
+    };
+  }, []);
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
-    <main className="flex-grow-1 d-flex flex-column position-relative" style={{ minHeight: 0 }}>
+    <main
+      className="flex-grow-1 d-flex flex-column position-relative"
+      style={{
+        minHeight: 0,
+        background:
+          theme.bg
+      }}
+    >
+
       <style>{`
-        .query-card { 
-          background: linear-gradient(135deg, ${theme.primary}15, ${theme.accent}15); 
-          border: 1px solid ${theme.primary}30; 
-          border-radius: 16px; 
-          padding: 16px; 
-          cursor: pointer; 
-          transition: all 0.3s ease; 
-          position: relative;
-          overflow: hidden;
+
+        .mindease-chat {
+          scrollbar-width: thin;
+          scrollbar-color: ${theme.border} transparent;
         }
-        .query-card:hover { 
-          transform: translateY(-2px); 
-          box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15); 
-          border-color: ${theme.primary}50;
+
+        .mindease-chat::-webkit-scrollbar {
+          width: 6px;
         }
-        .typing-indicator {
-          display: inline-block;
-          padding: 8px 12px;
-          background: ${theme.input};
-          border-radius: 18px;
-          color: theme.subtext;
+
+        .mindease-chat::-webkit-scrollbar-thumb {
+          background: ${theme.border};
+          border-radius: 10px;
         }
-        .typing-dot {
-          display: inline-block;
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: ${theme.primary};
-          margin: 0 2px;
-          animation: typing 1.4s infinite;
+
+        .welcome-card {
+          transition: all 0.25s ease;
+          cursor: pointer;
         }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typing {
-          0%, 60%, 100% { transform: translateY(0); }
-          30% { transform: translateY(-10px); }
+
+        .welcome-card:hover {
+          transform: translateY(-4px);
+          border-color: ${theme.primary};
+          box-shadow:
+            0 12px 30px rgba(99, 102, 241, 0.15);
         }
-        @keyframes fadeInUp {
+
+        .recommendation-card {
+          transition: all 0.25s ease;
+          cursor: pointer;
+        }
+
+        .recommendation-card:hover {
+          transform: translateY(-3px);
+          border-color: ${theme.primary};
+        }
+
+        .message-user {
+          animation: messageIn 0.3s ease;
+        }
+
+        .message-ai {
+          animation: messageIn 0.3s ease;
+        }
+
+        @keyframes messageIn {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(8px);
           }
+
           to {
             opacity: 1;
             transform: translateY(0);
           }
         }
-        .pulse-animation {
-          animation: pulse-ring 1.5s ease-in-out infinite;
+
+        .typing-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          display: inline-block;
+          background: ${theme.primary};
+          margin: 0 3px;
+          animation: typing 1.3s infinite;
         }
-        @keyframes pulse-ring {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.02); opacity: 0.9; }
-          100% { transform: scale(1); opacity: 1; }
+
+        .typing-dot:nth-child(2) {
+          animation-delay: 0.15s;
         }
+
+        .typing-dot:nth-child(3) {
+          animation-delay: 0.3s;
+        }
+
+        @keyframes typing {
+          0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.5;
+          }
+
+          30% {
+            transform: translateY(-5px);
+            opacity: 1;
+          }
+        }
+
+        .voice-active {
+          animation: voicePulse 1.5s infinite;
+        }
+
+        @keyframes voicePulse {
+          0% {
+            box-shadow:
+              0 0 0 0 rgba(239, 68, 68, 0.4);
+          }
+
+          70% {
+            box-shadow:
+              0 0 0 12px rgba(239, 68, 68, 0);
+          }
+
+          100% {
+            box-shadow:
+              0 0 0 0 rgba(239, 68, 68, 0);
+          }
+        }
+
+        .composer {
+          transition: all 0.25s ease;
+        }
+
+        .composer:focus-within {
+          border-color: ${theme.primary} !important;
+
+          box-shadow:
+            0 8px 30px rgba(99, 102, 241, 0.15);
+        }
+
+        .send-button {
+          transition: all 0.2s ease;
+        }
+
+        .send-button:hover:not(:disabled) {
+          transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+
+        .quick-chip {
+          transition: all 0.2s ease;
+        }
+
+        .quick-chip:hover {
+          border-color: ${theme.primary} !important;
+          background: ${theme.primary}12 !important;
+        }
+
+        @media (max-width: 1100px) {
+          .recommendations-panel {
+            display: none !important;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .welcome-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .message-bubble {
+            max-width: 88% !important;
+          }
+
+          .composer-container {
+            padding: 12px !important;
+          }
+
+          .quick-suggestions {
+            display: none !important;
+          }
+        }
+
       `}</style>
 
-      {/* CHAT MESSAGES */}
-      <div ref={scrollRef} className="flex-grow-1 overflow-auto p-4" style={{ minHeight: 0 }}>
-        <div className="mx-auto" style={{ maxWidth: isSidebarOpen ? "850px" : "1100px" }}>
-          {/* Show default queries if no messages */}
-          {!currentSession?.messages?.length && defaultQueries && (
-            <div className="d-flex flex-column gap-3 align-items-center justify-content-center h-100">
-              <div className="text-center mb-4">
-                <Brain size={48} className="mb-3" style={{ color: theme.primary }} />
-                <h2 className="fw-bold mb-2" style={{ color: theme.text }}>How can I help you today?</h2>
-                <p style={{ color: theme.subtext }}>Choose a topic below or type your own question</p>
+      {/* =================================================
+          MAIN CHAT LAYOUT
+      ================================================= */}
+
+      <div
+        className="d-flex flex-grow-1"
+        style={{
+          minHeight: 0
+        }}
+      >
+
+        {/* =================================================
+            CENTER CHAT
+        ================================================= */}
+
+        <section
+          className="flex-grow-1 d-flex flex-column"
+          style={{
+            minWidth: 0
+          }}
+        >
+
+          {/* CHAT HEADER */}
+
+          <div
+            className="px-4 py-3 d-flex align-items-center justify-content-between"
+            style={{
+              borderBottom:
+                `1px solid ${theme.border}`
+            }}
+          >
+
+            <div
+              className="d-flex align-items-center gap-3"
+            >
+
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 14,
+                  background:
+                    `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff"
+                }}
+              >
+                <Sparkles
+                  size={21}
+                />
               </div>
-              <div className="d-flex flex-wrap gap-3 justify-content-center" style={{ maxWidth: '600px' }}>
-                {defaultQueries.slice(0, 3).map((query, index) => (
-                  <div 
-                    key={index}
-                    className="query-card flex-fill text-center"
-                    style={{ minWidth: '180px', maxWidth: '220px' }}
-                    onClick={() => handleSend(query.text)}
+
+              <div>
+                <div
+                  className="fw-bold"
+                  style={{
+                    color: theme.text
+                  }}
+                >
+                  MindEase AI
+                </div>
+
+                <div
+                  style={{
+                    color:
+                      theme.subtext,
+                    fontSize: 12
+                  }}
+                >
+                  Your private AI companion
+                </div>
+              </div>
+
+            </div>
+
+            <div
+              className="d-flex align-items-center gap-2"
+              style={{
+                color: "#10b981",
+                fontSize: 12
+              }}
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background:
+                    "#10b981"
+                }}
+              />
+
+              Online
+            </div>
+
+          </div>
+
+          {/* =================================================
+              CHAT CONTENT
+          ================================================= */}
+
+          <div
+            ref={scrollRef}
+            className="mindease-chat flex-grow-1 overflow-auto px-4 py-4"
+            style={{
+              minHeight: 0
+            }}
+          >
+
+            <div
+              style={{
+                maxWidth: 900,
+                margin: "0 auto"
+              }}
+            >
+
+              {/* =================================================
+                  EMPTY STATE
+              ================================================= */}
+
+              {!currentSession?.messages?.length ? (
+
+                <div
+                  className="d-flex flex-column justify-content-center"
+                  style={{
+                    minHeight:
+                      "calc(100vh - 250px)"
+                  }}
+                >
+
+                  <div
+                    className="text-center mb-5"
                   >
-                    <div className="mb-2">
-                      {query.icon}
+
+                    <div
+                      style={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: 24,
+                        background:
+                          `linear-gradient(135deg, ${theme.primary}20, ${theme.accent}20)`,
+                        border:
+                          `1px solid ${theme.primary}30`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent:
+                          "center",
+                        margin:
+                          "0 auto 20px"
+                      }}
+                    >
+
+                      <Brain
+                        size={36}
+                        style={{
+                          color:
+                            theme.primary
+                        }}
+                      />
+
                     </div>
-                    <div className="text-center">{query.text}</div>
+
+                    <h1
+                      className="fw-bold mb-2"
+                      style={{
+                        color:
+                          theme.text,
+                        fontSize:
+                          "clamp(28px, 4vw, 42px)"
+                      }}
+                    >
+                      How are you feeling today?
+                    </h1>
+
+                    <p
+                      style={{
+                        color:
+                          theme.subtext,
+                        maxWidth: 520,
+                        margin:
+                          "0 auto",
+                        lineHeight: 1.7
+                      }}
+                    >
+                      I'm here to listen,
+                      support you, and help
+                      you understand what
+                      you're going through.
+                    </p>
+
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Render messages */}
-          {currentSession?.messages?.map((msg, index) => (
-            <div key={msg.id || index} className={`d-flex mb-3 ${msg.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
-              <div className={`p-3 rounded-4 position-relative ${
-                msg.role === 'user' 
-                  ? 'text-white' 
-                  : msg.error
-                    ? 'border border-danger bg-danger-subtle'
-                    : 'border'
-              }`} style={{ 
-                maxWidth: '70%',
-                backgroundColor: msg.role === 'user' ? theme.primary : (msg.error ? '#fff5f5' : theme.card),
-                borderColor: theme.border,
-                boxShadow: msg.role === 'user' ? '0 4px 12px rgba(99, 102, 241, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
-                wordBreak: 'break-word',
-                animation: 'fadeInUp 0.3s ease-out'
-              }}>
-                <div className="d-flex align-items-center mb-2">
-                  {msg.role === 'user' ? <User size={16} className="me-2" /> : <Bot size={16} className="me-2" />}
-                  <small className="opacity-75">{msg.time}</small>
-                  {msg.error && (
-                    <span className="badge bg-danger text-white ms-2" style={{ fontSize: '10px' }}>
-                      Failed
-                    </span>
+
+                  {/* QUICK PROMPTS */}
+
+                  <div
+                    className="welcome-grid"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(2, 1fr)",
+                      gap: 12,
+                      maxWidth: 680,
+                      width: "100%",
+                      margin:
+                        "0 auto"
+                    }}
+                  >
+
+                    {defaultQueries
+                      ?.slice(0, 4)
+                      .map(
+                        (
+                          query,
+                          index
+                        ) => (
+
+                          <button
+                            key={index}
+                            className="welcome-card text-start p-3"
+                            onClick={() =>
+                              handleRecommendation(
+                                query
+                              )
+                            }
+                            style={{
+                              background:
+                                theme.card,
+                              border:
+                                `1px solid ${theme.border}`,
+                              borderRadius:
+                                16,
+                              color:
+                                theme.text
+                            }}
+                          >
+
+                            <div
+                              className="d-flex align-items-center gap-3"
+                            >
+
+                              <div
+                                style={{
+                                  fontSize:
+                                    26,
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius:
+                                    13,
+                                  background:
+                                    `${theme.primary}12`,
+                                  display:
+                                    "flex",
+                                  alignItems:
+                                    "center",
+                                  justifyContent:
+                                    "center"
+                                }}
+                              >
+                                {
+                                  query.icon
+                                }
+                              </div>
+
+                              <div>
+
+                                <div
+                                  className="fw-semibold"
+                                  style={{
+                                    fontSize:
+                                      14
+                                  }}
+                                >
+                                  {
+                                    query.title
+                                  }
+                                </div>
+
+                                <div
+                                  style={{
+                                    color:
+                                      theme.subtext,
+                                    fontSize:
+                                      12,
+                                    marginTop:
+                                      3
+                                  }}
+                                >
+                                  {
+                                    query.description
+                                  }
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                          </button>
+
+                        )
+                      )}
+
+                  </div>
+
+                </div>
+
+              ) : (
+
+                /* =================================================
+                   MESSAGES
+                ================================================= */
+
+                <div
+                  className="d-flex flex-column gap-4"
+                >
+
+                  {currentSession.messages.map(
+                    (
+                      msg,
+                      index
+                    ) => (
+
+                      <div
+                        key={
+                          msg.id ||
+                          index
+                        }
+                        className={
+                          msg.role ===
+                          "user"
+                            ? "message-user d-flex justify-content-end"
+                            : "message-ai d-flex justify-content-start"
+                        }
+                      >
+
+                        <div
+                          className="d-flex gap-3"
+                          style={{
+                            maxWidth:
+                              "78%",
+                            flexDirection:
+                              msg.role ===
+                              "user"
+                                ? "row-reverse"
+                                : "row"
+                          }}
+                        >
+
+                          {/* AVATAR */}
+
+                          <div
+                            style={{
+                              flexShrink: 0,
+                              width: 36,
+                              height: 36,
+                              borderRadius:
+                                12,
+                              background:
+                                msg.role ===
+                                "user"
+                                  ? theme.primary
+                                  : `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
+                              display:
+                                "flex",
+                              alignItems:
+                                "center",
+                              justifyContent:
+                                "center",
+                              color:
+                                "#fff"
+                            }}
+                          >
+
+                            {msg.role ===
+                            "user" ? (
+                              <User
+                                size={17}
+                              />
+                            ) : (
+                              <Bot
+                                size={18}
+                              />
+                            )}
+
+                          </div>
+
+                          {/* MESSAGE */}
+
+                          <div
+                            className="message-bubble"
+                            style={{
+                              background:
+                                msg.role ===
+                                "user"
+                                  ? theme.primary
+                                  : theme.card,
+
+                              color:
+                                msg.role ===
+                                "user"
+                                  ? "#fff"
+                                  : theme.text,
+
+                              border:
+                                msg.role ===
+                                "user"
+                                  ? "none"
+                                  : `1px solid ${theme.border}`,
+
+                              borderRadius:
+                                18,
+
+                              borderTopRightRadius:
+                                msg.role ===
+                                "user"
+                                  ? 5
+                                  : 18,
+
+                              borderTopLeftRadius:
+                                msg.role ===
+                                "ai"
+                                  ? 5
+                                  : 18,
+
+                              padding:
+                                "14px 17px",
+
+                              boxShadow:
+                                msg.role ===
+                                "user"
+                                  ? "0 6px 18px rgba(99,102,241,0.18)"
+                                  : "0 4px 15px rgba(0,0,0,0.05)"
+                            }}
+                          >
+
+                            <div
+                              style={{
+                                whiteSpace:
+                                  "pre-wrap",
+                                lineHeight:
+                                  1.65,
+                                fontSize:
+                                  14
+                              }}
+                            >
+                              {
+                                msg.text
+                              }
+                            </div>
+
+                            {msg.role === "ai" &&
+                              (msg.safety?.crisis_triggered === true ||
+                                msg.safety?.emergency === true) && (
+                                <div
+                                  role="alert"
+                                  style={{
+                                    marginTop: 12,
+                                    padding: 12,
+                                    borderRadius: 10,
+                                    background: "rgba(239, 68, 68, 0.12)",
+                                    border: "1px solid rgba(239, 68, 68, 0.35)",
+                                    color: theme.text
+                                  }}
+                                >
+                                  <div className="d-flex align-items-center gap-2 fw-semibold">
+                                    <ShieldCheck size={16} />
+                                    Immediate support is available
+                                  </div>
+
+                                  {Array.isArray(msg.safety?.resources) &&
+                                    msg.safety.resources.length > 0 && (
+                                      <div className="mt-2">
+                                        {msg.safety.resources.map((resource, resourceIndex) => (
+                                          <div key={resourceIndex} style={{ fontSize: 12 }}>
+                                            {resource.name}: {resource.phone}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                </div>
+                              )}
+
+                            {msg.role === "ai" &&
+                              (msg.safety?.moderate_risk === true ||
+                                msg.safety?.alert === true) &&
+                              msg.safety?.crisis_triggered !== true &&
+                              msg.safety?.emergency !== true && (
+                                <div
+                                  role="status"
+                                  className="mt-2"
+                                  style={{
+                                    fontSize: 12,
+                                    color: theme.accent
+                                  }}
+                                >
+                                  Extra support may be helpful right now.
+                                </div>
+                              )}
+
+                            {msg.role === "ai" &&
+                              msg.safety?.validation_applied === true &&
+                              msg.safety?.rejected === true && (
+                                <div
+                                  role="status"
+                                  className="mt-2"
+                                  style={{
+                                    fontSize: 12,
+                                    color: theme.subtext
+                                  }}
+                                >
+                                  Response kept within mental-health support topics.
+                                </div>
+                              )}
+
+                            {msg.role === "ai" &&
+                              (msg.safety?.degraded === true ||
+                                msg.safety?.fallback === true) && (
+                                <div
+                                  role="status"
+                                  className="mt-2"
+                                  style={{
+                                    fontSize: 12,
+                                    color: theme.subtext
+                                  }}
+                                >
+                                  A fallback response was provided while the AI service was unavailable.
+                                </div>
+                              )}
+
+                            <div
+                              className="mt-2"
+                              style={{
+                                fontSize:
+                                  10,
+                                opacity:
+                                  0.55
+                              }}
+                            >
+                              {
+                                msg.time
+                              }
+                            </div>
+
+                            {/* AI ANALYSIS */}
+
+                            {msg.role ===
+                              "ai" &&
+                              msg.analysis &&
+                              (msg.analysis
+                                .emotion ||
+                                msg.analysis
+                                  .intent) && (
+
+                                <div
+                                  className="d-flex flex-wrap gap-2 mt-3"
+                                >
+
+                                  {msg.analysis
+                                    ?.emotion
+                                    ?.label && (
+
+                                    <span
+                                      style={{
+                                        padding:
+                                          "4px 8px",
+                                        borderRadius:
+                                          8,
+                                        background:
+                                          `${theme.primary}15`,
+                                        color:
+                                          theme.primary,
+                                        fontSize:
+                                          10
+                                      }}
+                                    >
+                                      Emotion:{" "}
+                                      {
+                                        msg
+                                          .analysis
+                                          .emotion
+                                          .label
+                                      }
+                                    </span>
+
+                                  )}
+
+                                  {msg.analysis
+                                    ?.intent
+                                    ?.label && (
+
+                                    <span
+                                      style={{
+                                        padding:
+                                          "4px 8px",
+                                        borderRadius:
+                                          8,
+                                        background:
+                                          `${theme.accent}15`,
+                                        color:
+                                          theme.accent,
+                                        fontSize:
+                                          10
+                                      }}
+                                    >
+                                      Intent:{" "}
+                                      {
+                                        msg
+                                          .analysis
+                                          .intent
+                                          .label
+                                      }
+                                    </span>
+
+                                  )}
+
+                                </div>
+
+                              )}
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    )
                   )}
+
+                  {/* =================================================
+                      TYPING
+                  ================================================= */}
+
+                  {isTyping && (
+
+                    <div
+                      className="d-flex gap-3"
+                    >
+
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 12,
+                          background:
+                            `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
+                          display: "flex",
+                          alignItems:
+                            "center",
+                          justifyContent:
+                            "center",
+                          color: "#fff"
+                        }}
+                      >
+                        <Bot
+                          size={18}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          background:
+                            theme.card,
+                          border:
+                            `1px solid ${theme.border}`,
+                          padding:
+                            "14px 16px",
+                          borderRadius:
+                            18,
+                          borderTopLeftRadius:
+                            5
+                        }}
+                      >
+
+                        <span className="typing-dot" />
+                        <span className="typing-dot" />
+                        <span className="typing-dot" />
+
+                      </div>
+
+                    </div>
+
+                  )}
+
                 </div>
-                <div style={{ 
-                  whiteSpace: 'pre-wrap', 
-                  lineHeight: '1.5',
-                  marginBottom: msg.enhanced ? '8px' : '0'
-                }}>
-                  {msg.text}
-                </div>
-                {/* Enhanced AI badges */}
-                {msg.role === 'ai' && msg.enhanced && (
-                  <div className="mt-2 d-flex flex-wrap align-items-center gap-2">
-                    <span className="badge bg-success-subtle text-success px-2 py-1" style={{ fontSize: '11px' }}>
-                      🧠 Enhanced AI
-                    </span>
-                    {msg.context_used && (
-                      <span className="badge bg-info-subtle text-info px-2 py-1" style={{ fontSize: '11px' }}>
-                        📚 Context Used
+
+              )}
+
+            </div>
+
+          </div>
+
+          {/* =================================================
+              COMPOSER
+          ================================================= */}
+
+          <div
+            className="composer-container px-4 pb-4"
+          >
+
+            <div
+              style={{
+                maxWidth: 900,
+                margin: "0 auto"
+              }}
+            >
+
+              {/* VOICE TRANSCRIPT */}
+
+              {isListening &&
+                liveTranscript && (
+
+                  <div
+                    className="mb-2 p-3"
+                    style={{
+                      background:
+                        `${theme.primary}10`,
+                      border:
+                        `1px solid ${theme.primary}30`,
+                      borderRadius: 14,
+                      color:
+                        theme.text
+                    }}
+                  >
+
+                    <div
+                      className="d-flex align-items-center gap-2 mb-1"
+                    >
+
+                      <Mic
+                        size={15}
+                        style={{
+                          color:
+                            "#ef4444"
+                        }}
+                      />
+
+                      <span
+                        style={{
+                          fontSize:
+                            11,
+                          color:
+                            theme.subtext
+                        }}
+                      >
+                        Listening...
                       </span>
-                    )}
-                    {msg.analysis?.intent && (
-                      <span className="badge bg-primary-subtle text-primary px-2 py-1" style={{ fontSize: '11px' }}>
-                        Intent: {msg.analysis.intent.label}
-                      </span>
-                    )}
-                    {msg.analysis?.emotion && (
-                      <span className="badge bg-warning-subtle text-warning px-2 py-1" style={{ fontSize: '11px' }}>
-                        Emotion: {msg.analysis.emotion.label}
-                      </span>
-                    )}
+
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize:
+                          13
+                      }}
+                    >
+                      {
+                        liveTranscript
+                      }
+                    </div>
+
                   </div>
+
                 )}
+
+              {/* VOICE CONTROL */}
+
+              {isListening && (
+
+                <div
+                  className="d-flex align-items-center justify-content-between mb-2"
+                >
+
+                  <span
+                    style={{
+                      color:
+                        theme.subtext,
+                      fontSize:
+                        12
+                    }}
+                  >
+                    Speak naturally. MindEase is listening.
+                  </span>
+
+                  <button
+                    onClick={
+                      sendVoiceMessage
+                    }
+                    disabled={
+                      !liveTranscript.trim()
+                    }
+                    style={{
+                      border:
+                        "none",
+                      background:
+                        theme.primary,
+                      color:
+                        "#fff",
+                      padding:
+                        "7px 12px",
+                      borderRadius:
+                        9,
+                      fontSize:
+                        12
+                    }}
+                  >
+                    Send Voice
+                  </button>
+
+                </div>
+
+              )}
+
+              {/* COMPOSER */}
+
+              <div
+                className="composer d-flex align-items-end gap-2"
+                style={{
+                  background:
+                    theme.card,
+                  border:
+                    `1px solid ${theme.border}`,
+                  borderRadius:
+                    20,
+                  padding:
+                    "8px 9px 8px 16px"
+                }}
+              >
+
+                <textarea
+                  value={input}
+                  onChange={(e) =>
+                    setInput(
+                      e.target.value
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (
+                      e.key ===
+                        "Enter" &&
+                      !e.shiftKey
+                    ) {
+                      e.preventDefault();
+
+                      handleSend(
+                        input
+                      );
+                    }
+                  }}
+                  disabled={
+                    isTyping
+                  }
+                  rows={1}
+                  placeholder={
+                    isListening
+                      ? "Listening to you..."
+                      : "Share what's on your mind..."
+                  }
+                  style={{
+                    flex: 1,
+                    resize:
+                      "none",
+                    border:
+                      "none",
+                    outline:
+                      "none",
+                    background:
+                      "transparent",
+                    color:
+                      theme.text,
+                    fontSize:
+                      14,
+                    padding:
+                      "10px 0",
+                    maxHeight:
+                      120
+                  }}
+                />
+
+                {/* MICROPHONE */}
+
+                <button
+                  type="button"
+                  onClick={
+                    toggleRecording
+                  }
+                  disabled={
+                    isTyping
+                  }
+                  className={
+                    isListening
+                      ? "voice-active"
+                      : ""
+                  }
+                  style={{
+                    width: 42,
+                    height: 42,
+                    flexShrink: 0,
+                    borderRadius:
+                      13,
+                    border:
+                      "none",
+                    background:
+                      isListening
+                        ? "#ef4444"
+                        : `${theme.primary}12`,
+                    color:
+                      isListening
+                        ? "#fff"
+                        : theme.primary,
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "center",
+                    cursor:
+                      isTyping
+                        ? "not-allowed"
+                        : "pointer"
+                  }}
+                  title={
+                    isListening
+                      ? "Stop listening"
+                      : "Voice input"
+                  }
+                >
+
+                  {isListening ? (
+                    <MicOff
+                      size={18}
+                    />
+                  ) : (
+                    <Mic
+                      size={18}
+                    />
+                  )}
+
+                </button>
+
+                {/* SEND */}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleSend(
+                      input
+                    )
+                  }
+                  disabled={
+                    isTyping ||
+                    !input.trim()
+                  }
+                  className="send-button"
+                  style={{
+                    width: 42,
+                    height: 42,
+                    flexShrink: 0,
+                    borderRadius:
+                      13,
+                    border:
+                      "none",
+                    background:
+                      theme.primary,
+                    color:
+                      "#fff",
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "center",
+                    cursor:
+                      "pointer"
+                  }}
+                  title="Send message"
+                >
+
+                  <ArrowUp
+                    size={19}
+                  />
+
+                </button>
+
               </div>
-            </div>
-          ))}
-          
-          {/* Typing indicator */}
-          {isTyping && (
-            <div className="d-flex justify-content-start mb-3">
-              <div className="typing-indicator">
-                <div className="typing-dot"></div>
-                <div className="typing-dot"></div>
-                <div className="typing-dot"></div>
+
+              {/* DISCLAIMER */}
+
+              <div
+                className="text-center mt-2"
+                style={{
+                  color:
+                    theme.subtext,
+                  fontSize:
+                    10
+                }}
+              >
+                MindEase is an AI support
+                companion. It is not a
+                replacement for professional
+                medical care.
               </div>
+
             </div>
-          )}
-        </div>
+
+          </div>
+
+        </section>
+
+        {/* =================================================
+            RIGHT RECOMMENDATIONS
+        ================================================= */}
+
+        <aside
+          className="recommendations-panel"
+          style={{
+            width: 260,
+            flexShrink: 0,
+            borderLeft:
+              `1px solid ${theme.border}`,
+            padding: 20,
+            overflowY: "auto"
+          }}
+        >
+
+          <div
+            className="d-flex align-items-center gap-2 mb-4"
+          >
+
+            <Sparkles
+              size={17}
+              style={{
+                color:
+                  theme.primary
+              }}
+            />
+
+            <span
+              className="fw-bold"
+              style={{
+                color:
+                  theme.text,
+                fontSize:
+                  14
+              }}
+            >
+              For You
+            </span>
+
+          </div>
+
+          <p
+            style={{
+              color:
+                theme.subtext,
+              fontSize:
+                11,
+              lineHeight:
+                1.5
+            }}
+          >
+            Small activities that may
+            help you feel better.
+          </p>
+
+          {/* BREATHING */}
+
+          <button
+            className="recommendation-card w-100 text-start border-0 p-3 mb-2"
+            onClick={() =>
+              handleSend(
+                "Can you guide me through a short breathing exercise?"
+              )
+            }
+            style={{
+              background:
+                theme.card,
+              border:
+                `1px solid ${theme.border}`,
+              borderRadius:
+                14,
+              color:
+                theme.text
+            }}
+          >
+
+            <Wind
+              size={20}
+              style={{
+                color:
+                  "#14b8a6"
+              }}
+            />
+
+            <div
+              className="fw-semibold mt-2"
+              style={{
+                fontSize:
+                  13
+              }}
+            >
+              Breathing
+            </div>
+
+            <div
+              style={{
+                color:
+                  theme.subtext,
+                fontSize:
+                  11,
+                marginTop:
+                  3
+              }}
+            >
+              2 minute calming exercise
+            </div>
+
+          </button>
+
+          {/* SLEEP */}
+
+          <button
+            className="recommendation-card w-100 text-start border-0 p-3 mb-2"
+            onClick={() =>
+              handleSend(
+                "Help me create a relaxing routine for better sleep."
+              )
+            }
+            style={{
+              background:
+                theme.card,
+              border:
+                `1px solid ${theme.border}`,
+              borderRadius:
+                14,
+              color:
+                theme.text
+            }}
+          >
+
+            <Moon
+              size={20}
+              style={{
+                color:
+                  "#8b5cf6"
+              }}
+            />
+
+            <div
+              className="fw-semibold mt-2"
+              style={{
+                fontSize:
+                  13
+              }}
+            >
+              Better Sleep
+            </div>
+
+            <div
+              style={{
+                color:
+                  theme.subtext,
+                fontSize:
+                  11,
+                marginTop:
+                  3
+              }}
+            >
+              Build a calming bedtime routine
+            </div>
+
+          </button>
+
+          {/* SUPPORT */}
+
+          <button
+            className="recommendation-card w-100 text-start border-0 p-3 mb-2"
+            onClick={() =>
+              handleSend(
+                "I'm feeling overwhelmed. Can you help me calm down?"
+              )
+            }
+            style={{
+              background:
+                theme.card,
+              border:
+                `1px solid ${theme.border}`,
+              borderRadius:
+                14,
+              color:
+                theme.text
+            }}
+          >
+
+            <Heart
+              size={20}
+              style={{
+                color:
+                  "#ec4899"
+              }}
+            />
+
+            <div
+              className="fw-semibold mt-2"
+              style={{
+                fontSize:
+                  13
+              }}
+            >
+              Emotional Support
+            </div>
+
+            <div
+              style={{
+                color:
+                  theme.subtext,
+                fontSize:
+                  11,
+                marginTop:
+                  3
+              }}
+            >
+              Talk through what's bothering you
+            </div>
+
+          </button>
+
+          {/* JOURNAL */}
+
+          <button
+            className="recommendation-card w-100 text-start border-0 p-3 mb-2"
+            onClick={() =>
+              handleSend(
+                "Give me a simple journaling prompt for today."
+              )
+            }
+            style={{
+              background:
+                theme.card,
+              border:
+                `1px solid ${theme.border}`,
+              borderRadius:
+                14,
+              color:
+                theme.text
+            }}
+          >
+
+            <BookOpen
+              size={20}
+              style={{
+                color:
+                  "#f59e0b"
+              }}
+            />
+
+            <div
+              className="fw-semibold mt-2"
+              style={{
+                fontSize:
+                  13
+              }}
+            >
+              Journal
+            </div>
+
+            <div
+              style={{
+                color:
+                  theme.subtext,
+                fontSize:
+                  11,
+                marginTop:
+                  3
+              }}
+            >
+              Reflect on your thoughts
+            </div>
+
+          </button>
+
+          {/* PRIVACY */}
+
+          <div
+            className="mt-4 p-3"
+            style={{
+              background:
+                `${theme.primary}08`,
+              border:
+                `1px solid ${theme.primary}18`,
+              borderRadius:
+                13
+            }}
+          >
+
+            <ShieldCheck
+              size={17}
+              style={{
+                color:
+                  theme.primary
+              }}
+            />
+
+            <div
+              className="fw-semibold mt-2"
+              style={{
+                fontSize:
+                  11,
+                color:
+                  theme.text
+              }}
+            >
+              Private conversation
+            </div>
+
+            <div
+              style={{
+                color:
+                  theme.subtext,
+                fontSize:
+                  10,
+                lineHeight:
+                  1.5,
+                marginTop:
+                  3
+              }}
+            >
+              Your conversation is
+              associated with your
+              MindEase account.
+            </div>
+
+          </div>
+
+        </aside>
+
       </div>
 
-      {/* INPUT AREA */}
-      <div className="p-4 mx-auto w-100" style={{ maxWidth: isSidebarOpen ? "850px" : "1100px" }}>
-        <div className="position-relative">
-          {/* Voice transcript display */}
-          {isListening && liveTranscript && (
-            <div className="mb-3 p-3 rounded-3" style={{ 
-              backgroundColor: theme.primary + '15', 
-              border: `1px solid ${theme.primary}30`,
-              color: theme.text
-            }}>
-              <div className="d-flex align-items-center mb-2">
-                <Mic size={16} className="me-2" style={{ color: theme.primary }} />
-                <small className="opacity-75">Voice Transcript:</small>
-              </div>
-              <div className="fw-medium">{liveTranscript}</div>
-              <div className="mt-2 d-flex gap-2">
-                <button 
-                  className="btn btn-sm btn-success"
-                  onClick={handleTranscriptSubmit}
-                >
-                  Send
-                </button>
-                <button 
-                  className="btn btn-sm btn-outline-secondary"
-                  onClick={() => setLiveTranscript("")}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {/* Main input */}
-          <div className="d-flex gap-2">
-            <input 
-              type="text" 
-              className={`form-control p-3 shadow-sm border-0 ${isListening ? 'pulse-animation' : ''}`} 
-              style={{ 
-                backgroundColor: theme.input, 
-                color: theme.text,
-                fontSize: '16px',
-                borderRadius: '12px'
-              }}
-              placeholder="Type your message or use voice..." 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend(input);
-                }
-              }}
-              disabled={isTyping}
-            />
-            
-            <button 
-              className={`btn p-3 shadow-sm border-0 ${isListening ? 'btn-danger' : 'btn-primary'}`}
-              style={{ 
-                backgroundColor: isListening ? '#dc3545' : theme.primary,
-                borderRadius: '12px',
-                minWidth: '50px'
-              }}
-              onClick={toggleRecording}
-              disabled={isTyping}
-              title={isListening ? "Stop Recording" : "Start Voice Recording"}
-            >
-              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-            </button>
-            
-            <button 
-              className="btn p-3 shadow-sm border-0 btn-primary"
-              style={{ 
-                backgroundColor: theme.primary,
-                borderRadius: '12px',
-                minWidth: '50px'
-              }}
-              onClick={() => handleSend(input)}
-              disabled={isTyping || !input.trim()}
-              title="Send Message"
-            >
-              <Send size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
     </main>
   );
 };

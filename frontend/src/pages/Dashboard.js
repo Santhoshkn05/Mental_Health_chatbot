@@ -23,6 +23,15 @@ const Dashboard = () => {
     return saved ? JSON.parse(saved) : true;
   });
 
+  const normalizeSessionId = (sessionId) => String(sessionId);
+
+  const normalizeSessions = (sessionsArray) => {
+    return sessionsArray.map(session => ({
+      ...session,
+      id: normalizeSessionId(session.id)
+    }));
+  };
+
   const [sessions, setSessions] = useState(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     if (user && user.email) {
@@ -31,10 +40,10 @@ const Dashboard = () => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          return parsed;
+          return normalizeSessions(Array.isArray(parsed) ? parsed : []);
         } catch (parseError) {
           console.error('Error parsing sessions:', parseError);
-          const newSessionId = Date.now();
+          const newSessionId = normalizeSessionId(Date.now());
           const initialSessions = [{ id: newSessionId, title: "New Chat", messages: [] }];
           localStorage.setItem(userSessionsKey, JSON.stringify(initialSessions));
           console.log('Created fallback sessions:', initialSessions);
@@ -42,7 +51,7 @@ const Dashboard = () => {
         }
       } else {
         console.log('No saved sessions found, creating new ones');
-        const newSessionId = Date.now();
+        const newSessionId = normalizeSessionId(Date.now());
         const initialSessions = [{ id: newSessionId, title: "New Chat", messages: [] }];
         localStorage.setItem(userSessionsKey, JSON.stringify(initialSessions));
         console.log('Created new sessions:', initialSessions);
@@ -51,7 +60,7 @@ const Dashboard = () => {
     } else {
       // No authenticated user - create empty sessions
       console.log('No authenticated user, creating empty sessions');
-      const newSessionId = Date.now();
+      const newSessionId = normalizeSessionId(Date.now());
       const initialSessions = [{ id: newSessionId, title: "New Chat", messages: [] }];
       localStorage.setItem("mindease-sessions", JSON.stringify(initialSessions));
       console.log('Created new sessions:', initialSessions);
@@ -67,13 +76,13 @@ const Dashboard = () => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (parsed.length > 0) {
-            const firstId = parsed[0]?.id;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const firstId = normalizeSessionId(parsed[0]?.id);
             console.log('Initial activeSessionId set:', firstId);
             return firstId;
           } else {
             // Create new session if array is empty
-            const newSessionId = Date.now();
+            const newSessionId = normalizeSessionId(Date.now());
             const initialSessions = [{ id: newSessionId, title: "New Chat", messages: [] }];
             localStorage.setItem(userSessionsKey, JSON.stringify(initialSessions));
             console.log('Created new session and set activeSessionId:', newSessionId);
@@ -81,7 +90,7 @@ const Dashboard = () => {
           }
         } catch (parseError) {
           console.error('Error parsing sessions for active ID:', parseError);
-          const newSessionId = Date.now();
+          const newSessionId = normalizeSessionId(Date.now());
           const initialSessions = [{ id: newSessionId, title: "New Chat", messages: [] }];
           localStorage.setItem(userSessionsKey, JSON.stringify(initialSessions));
           console.log('Created fallback session and set activeSessionId:', newSessionId);
@@ -89,7 +98,7 @@ const Dashboard = () => {
         }
       } else {
         console.log('No saved sessions found, creating new active session ID');
-        const newSessionId = Date.now();
+        const newSessionId = normalizeSessionId(Date.now());
         const initialSessions = [{ id: newSessionId, title: "New Chat", messages: [] }];
         localStorage.setItem(userSessionsKey, JSON.stringify(initialSessions));
         console.log('Created new session and set activeSessionId:', newSessionId);
@@ -98,7 +107,7 @@ const Dashboard = () => {
     } else {
       // No authenticated user - create empty sessions
       console.log('No authenticated user, creating empty active session ID');
-      const newSessionId = Date.now();
+      const newSessionId = normalizeSessionId(Date.now());
       const initialSessions = [{ id: newSessionId, title: "New Chat", messages: [] }];
       localStorage.setItem("mindease-sessions", JSON.stringify(initialSessions));
       console.log('Created new session and set activeSessionId:', newSessionId);

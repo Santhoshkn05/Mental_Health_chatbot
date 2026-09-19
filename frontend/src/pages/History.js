@@ -1,9 +1,59 @@
 import React, { useState, useEffect } from "react";
 import { Plus, MessageSquare, Clock, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessionId, theme, isOpen, onToggle }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [deletingIds, setDeletingIds] = useState(new Set());
+
+  const normalizeSessionId = (sessionId) => String(sessionId);
+
+  const areSessionsEqual = (currentSessions, nextSessions) => {
+    return JSON.stringify(currentSessions) === JSON.stringify(nextSessions);
+  };
+
+  const mergeBackendSessions = (currentSessions, backendSessions, preserveLocalOnly = true) => {
+    const currentMap = new Map(
+      currentSessions.map(session => [normalizeSessionId(session.id), {
+        ...session,
+        id: normalizeSessionId(session.id)
+      }])
+    );
+
+    const backendMap = new Map(
+      backendSessions.map(session => [normalizeSessionId(session.id), {
+        ...session,
+        id: normalizeSessionId(session.id)
+      }])
+    );
+
+    const mergedSessions = backendSessions.map(session => {
+      const normalizedId = normalizeSessionId(session.id);
+      const normalizedBackendSession = {
+        ...session,
+        id: normalizedId
+      };
+      const existingSession = currentMap.get(normalizedId);
+
+      if (existingSession && (existingSession.messages || []).length > (normalizedBackendSession.messages || []).length) {
+        return existingSession;
+      }
+
+      return normalizedBackendSession;
+    });
+
+    if (preserveLocalOnly) {
+      currentMap.forEach((session, sessionId) => {
+        if (!backendMap.has(sessionId)) {
+          mergedSessions.push(session);
+        }
+      });
+    }
+
+    return mergedSessions.sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated));
+  };
 
   // Get auth token
   const getAuthToken = () => {
@@ -11,7 +61,7 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
   };
 
   // Fetch chat history from backend
-  const fetchChatHistory = async () => {
+  const fetchChatHistory = async ({ preserveLocalOnly = true } = {}) => {
     const token = getAuthToken();
     if (!token) {
       setError("No authentication token found");
@@ -22,7 +72,7 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:3001/api/chats', {
+      const response = await fetch(`${API_URL}/api/chats`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -40,17 +90,24 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
       const sessionsMap = new Map();
       
       chatData.forEach(chat => {
-        const sessionId = chat.session_id;
+        // Normalize session id and skip any chats that have empty/null session_id
+        const rawSessionId = chat.session_id;
+        const sessionId = normalizeSessionId(rawSessionId);
+        if (!sessionId) {
+          console.warn('Skipping chat with empty session_id', chat);
+          return; // skip malformed rows
+        }
+
         if (!sessionsMap.has(sessionId)) {
           sessionsMap.set(sessionId, {
             id: sessionId,
-            title: chat.message.length > 30 ? chat.message.substring(0, 30) + '...' : chat.message,
+            title: chat.message && chat.message.length > 30 ? chat.message.substring(0, 30) + '...' : (chat.message || 'New Chat'),
             messages: [],
             createdAt: chat.timestamp,
             lastUpdated: chat.timestamp
           });
         }
-        
+
         const session = sessionsMap.get(sessionId);
         session.messages.push({
           id: chat.id,
@@ -66,11 +123,30 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
         }
       });
 
-      const sessionsArray = Array.from(sessionsMap.values()).sort((a, b) => 
-        new Date(b.lastUpdated) - new Date(a.lastUpdated)
-      );
+      const sessionsArray = Array.from(sessionsMap.values())
+        .filter(s => s.id) // ensure no empty ids
+        .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated));
 
-      setSessions(sessionsArray);
+      // If backend returned zero sessions:
+      // - preserve local client sessions on normal history fetches
+      // - allow an empty state when called after deleteSession
+      if (!sessionsArray || sessionsArray.length === 0) {
+        if (preserveLocalOnly) {
+          console.log('fetchChatHistory: backend returned no sessions; preserving existing client sessions');
+        } else {
+          console.log('fetchChatHistory: backend returned no sessions; clearing session state after delete');
+          setSessions([]);
+        }
+      } else {
+        setSessions(prevSessions => {
+          const mergedSessions = mergeBackendSessions(prevSessions, sessionsArray, preserveLocalOnly);
+          return areSessionsEqual(prevSessions, mergedSessions) ? prevSessions : mergedSessions;
+        });
+      }
+
+      if (activeSessionId !== undefined && activeSessionId !== null && activeSessionId !== normalizeSessionId(activeSessionId)) {
+        setActiveSessionId(normalizeSessionId(activeSessionId));
+      }
     } catch (err) {
       console.error("Error fetching chat history:", err);
       setError("Failed to load chat history");
@@ -93,7 +169,7 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
   };
 
   const createNewSession = () => {
-    const id = Date.now();
+    const id = normalizeSessionId(Date.now());
     const newSession = { 
       id, 
       title: "New Chat", 
@@ -104,7 +180,10 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
     
     // Use user-specific session storage
     const userSessionsKey = getUserSessionsKey();
-    const existingSessions = JSON.parse(localStorage.getItem(userSessionsKey)) || [];
+    const existingSessions = sessions.map(session => ({
+      ...session,
+      id: normalizeSessionId(session.id)
+    }));
     const updatedSessions = [newSession, ...existingSessions];
     localStorage.setItem(userSessionsKey, JSON.stringify(updatedSessions));
     setSessions(updatedSessions);
@@ -113,14 +192,24 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
 
   const deleteSession = async (sessionId, e) => {
     e.stopPropagation();
+
+    if (!window.confirm('Are you sure you want to delete this chat session?')) {
+      return;
+    }
+
+    const normalizedSessionId = normalizeSessionId(sessionId);
+    // Prevent duplicate delete requests
+    if (deletingIds.has(normalizedSessionId)) return;
+    setDeletingIds(prev => new Set(prev).add(normalizedSessionId));
     const token = getAuthToken();
     if (!token) {
       setError("No authentication token found");
+      setDeletingIds(prev => { const copy = new Set(prev); copy.delete(normalizedSessionId); return copy; });
       return;
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/chats/${sessionId}`, {
+      const response = await fetch(`${API_URL}/api/chats/${normalizedSessionId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -132,19 +221,24 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Refresh the chat history after deletion
-      await fetchChatHistory();
-      
+      // Optimistically remove the deleted session locally first.
+      setSessions(prev => prev.filter(s => normalizeSessionId(s.id) !== normalizedSessionId));
+
       // Update active session if needed
-      if (activeSessionId === sessionId) {
-        const remainingSessions = sessions.filter(s => s.id !== sessionId);
-        if (remainingSessions.length > 0) {
-          setActiveSessionId(remainingSessions[0].id);
-        }
+      if (normalizeSessionId(activeSessionId) === normalizedSessionId) {
+        setActiveSessionId(prev => {
+          const remainingSessions = sessions.filter(s => normalizeSessionId(s.id) !== normalizedSessionId);
+          return remainingSessions.length > 0 ? normalizeSessionId(remainingSessions[0].id) : null;
+        });
       }
+
+      // Refresh the chat history after deletion
+      await fetchChatHistory({ preserveLocalOnly: false });
     } catch (err) {
       console.error("Error deleting session:", err);
       setError("Failed to delete chat session");
+    } finally {
+      setDeletingIds(prev => { const copy = new Set(prev); copy.delete(normalizedSessionId); return copy; });
     }
   };
 
@@ -253,11 +347,11 @@ const SidebarHistory = ({ sessions, setSessions, activeSessionId, setActiveSessi
         ) : (
           sessions.map(s => (
             <div key={s.id} 
-                 onClick={() => setActiveSessionId(s.id)} 
-                 className={`sidebar-item ${activeSessionId === s.id ? 'sidebar-active' : ''}`}
+                 onClick={() => setActiveSessionId(normalizeSessionId(s.id))} 
+                 className={`sidebar-item ${normalizeSessionId(activeSessionId) === normalizeSessionId(s.id) ? 'sidebar-active' : ''}`}
                  style={{ color: theme.text }}>
               <div className="d-flex align-items-center gap-2 text-truncate flex-grow-1">
-                <MessageSquare size={14} color={activeSessionId === s.id ? theme.primary : theme.accent} />
+                <MessageSquare size={14} color={normalizeSessionId(activeSessionId) === normalizeSessionId(s.id) ? theme.primary : theme.accent} />
                 <div className="text-truncate">
                   <div className="small fw-medium text-truncate">{s.title}</div>
                   {s.lastUpdated && (

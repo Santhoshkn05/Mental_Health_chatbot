@@ -1,5 +1,7 @@
 // Authentication utilities
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
 export const isAuthenticated = () => {
   const token = localStorage.getItem('token');
   const user = localStorage.getItem('user');
@@ -26,7 +28,7 @@ export const deleteAccount = async () => {
   
   try {
     console.log('Attempting to delete account...');
-    const response = await fetch('http://localhost:3001/api/delete-account', {
+    const response = await fetch(`${API_URL}/api/delete-account`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

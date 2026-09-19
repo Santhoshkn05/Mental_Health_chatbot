@@ -1,291 +1,1982 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Sun, Moon, Mail, Lock, ArrowRight, AlertCircle, ShieldCheck, CheckCircle } from "lucide-react";
+import {
+  Brain,
+  Sun,
+  Moon,
+  Mail,
+  Lock,
+  ArrowRight,
+  AlertCircle,
+  ShieldCheck,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  Loader2,
+  KeyRound,
+  Sparkles
+} from "lucide-react";
 import "bootstrap/dist/css/bootstrap.min.css";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [view, setView] = useState("signin"); 
+
+  const [view, setView] = useState("signin");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] =
+    useState(false);
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem("mindease-theme");
-    return savedTheme ? JSON.parse(savedTheme) : true;
+    const savedTheme =
+      localStorage.getItem("mindease-theme");
+
+    return savedTheme
+      ? JSON.parse(savedTheme)
+      : true;
   });
 
   useEffect(() => {
-    localStorage.setItem("mindease-theme", JSON.stringify(isDarkMode));
+    localStorage.setItem(
+      "mindease-theme",
+      JSON.stringify(isDarkMode)
+    );
   }, [isDarkMode]);
 
+  // =========================
+  // THEME
+  // =========================
+
   const theme = {
-    bg: isDarkMode ? "#05020a" : "#fdfaff",
-    text: isDarkMode ? "#ffffff" : "#2e1065",
-    subtext: isDarkMode ? "rgba(255, 255, 255, 0.6)" : "#5b21b6",
+    bg: isDarkMode
+      ? "#070511"
+      : "#f7f7fb",
+
+    card: isDarkMode
+      ? "rgba(19, 15, 38, 0.88)"
+      : "#ffffff",
+
+    cardSecondary: isDarkMode
+      ? "rgba(124, 58, 237, 0.08)"
+      : "#f8f7ff",
+
+    text: isDarkMode
+      ? "#ffffff"
+      : "#171326",
+
+    subtext: isDarkMode
+      ? "rgba(255,255,255,0.62)"
+      : "#6b7280",
+
+    border: isDarkMode
+      ? "rgba(255,255,255,0.09)"
+      : "rgba(30,27,75,0.10)",
+
+    input: isDarkMode
+      ? "rgba(255,255,255,0.045)"
+      : "#f8f8fc",
+
     primary: "#7c3aed",
-    accent: "#b2d8d0",
-    card: isDarkMode ? "rgba(124, 58, 237, 0.05)" : "#ffffff",
-    border: isDarkMode ? "rgba(124, 58, 237, 0.15)" : "rgba(124, 58, 237, 0.1)",
-    input: isDarkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(124, 58, 237, 0.03)"
+
+    primaryHover: "#6d28d9",
+
+    accent: "#14b8a6",
+
+    success: "#10b981",
+
+    warning: "#f59e0b",
+
+    error: "#ef4444"
   };
 
-  // --- 1. REQUEST OTP FROM BACKEND ---
-  const handleRequestOTP = async (e) => {
-    e.preventDefault();
+  // =========================
+  // CLEAR MESSAGES
+  // =========================
+
+  const clearMessages = () => {
     setError("");
-    setMessage("Sending secure code...");
+    setMessage("");
+  };
+
+  // =========================
+  // LOGIN
+  // =========================
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    clearMessages();
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    if (!normalizedEmail.endsWith("@gmail.com")) {
+      setError(
+        "Only @gmail.com addresses are permitted."
+      );
+      return;
+    }
+
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
+      const response = await fetch(
+        `${API_URL}/api/login`,
+        {
+          method: "POST",
 
-      const data = await response.json();
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            email: normalizedEmail,
+            password
+          })
+        }
+      );
+
+      const data =
+        await response.json();
+
+      // Login success
       if (response.ok) {
-        setMessage("Verification code sent to your email.");
-        setView("otp");
-      } else {
-        setError(data.error || "Failed to send OTP.");
-        setMessage("");
+        setMessage("Login successful.");
+
+        // Save JWT
+        localStorage.setItem(
+          "token",
+          data.token
+        );
+
+        // Save user
+        const user = {
+          name: data.name,
+          email: data.email,
+          userId:
+            data.userId ||
+            data.id
+        };
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(user)
+        );
+
+        // Create first chat session
+        try {
+          const userSessionsKey =
+            `mindease-sessions-${data.email}`;
+
+          const existingSessions =
+            JSON.parse(
+              localStorage.getItem(
+                userSessionsKey
+              )
+            ) || [];
+
+          /*
+           * Only create Welcome Chat
+           * if this user doesn't have
+           * any sessions.
+           */
+          if (
+            existingSessions.length === 0
+          ) {
+            const newSession = {
+              id: Date.now(),
+
+              title: "Welcome Chat",
+
+              messages: [],
+
+              createdAt:
+                new Date().toISOString(),
+
+              lastUpdated:
+                new Date().toISOString()
+            };
+
+            localStorage.setItem(
+              userSessionsKey,
+              JSON.stringify([
+                newSession
+              ])
+            );
+          }
+
+        } catch (storageError) {
+          console.error(
+            "Session storage error:",
+            storageError
+          );
+        }
+
+        // Navigate to dashboard
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 800);
+
+        return;
       }
+
+      // Backend errors
+      if (response.status === 403) {
+        setError(
+          data.error ||
+            "Please verify your email address before logging in."
+        );
+
+        return;
+      }
+
+      if (response.status === 401) {
+        setError(
+          data.error ||
+            "Invalid email or password."
+        );
+
+        return;
+      }
+
+      setError(
+        data.error ||
+          "Login failed. Please try again."
+      );
+
     } catch (err) {
-      setError("Server connection failed.");
+      console.error(
+        "Login error:",
+        err
+      );
+
+      setError(
+        "Unable to connect to the server. Please try again."
+      );
+
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // --- 2. VERIFY OTP AGAINST BACKEND ---
-  const handleVerifyOTP = async (e) => {
-  e.preventDefault();
-  setError("");
-  try {
-    const response = await fetch('http://localhost:3001/api/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp })
-    });
+  // =========================
+  // REQUEST OTP
+  // =========================
 
-    if (response.ok) {
-      setMessage(""); 
-      setView("reset"); 
-      setError("");
-    } else {
-      const data = await response.json();
-      setError(data.error || "Invalid verification code.");
+  const handleRequestOTP = async (e) => {
+    e.preventDefault();
+
+    clearMessages();
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError(
+        "Please enter your email address."
+      );
+      return;
     }
-  } catch (err) {
-    setError("Network error. Try again.");
-  }
-};
 
-const handleResetPassword = async (e) => {
-  e.preventDefault();
-  setError("");
-  try {
-    const response = await fetch('http://localhost:3001/api/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp, newPassword })
-    });
-
-    const data = await response.json();
-    if (response.ok) {
-      // 1. Set the success message first
-      setMessage("Password changed successfully.");
-      
-      // 2. Wait 2 seconds so the user can actually read it on the RESET screen
-      setTimeout(() => {
-        setView("signin"); // Move to login screen
-        setNewPassword(""); // Clear the field
-        // Note: Do NOT clear the message yet, so it shows on the Sign-In screen too
-      }, 2000);
-
-      // 3. Optional: Clear the green message after 5 seconds total
-      setTimeout(() => setMessage(""), 5000);
-      
-    } else {
-      setError(data.error);
+    if (!normalizedEmail.endsWith("@gmail.com")) {
+      setError(
+        "Only @gmail.com addresses are permitted."
+      );
+      return;
     }
-  } catch (err) {
-    setError("Could not update password. Check your connection.");
-  }
-};
 
-const handleLogin = async (e) => {
-  e.preventDefault();
-  setError("");
-  try {
-    const response = await fetch('http://localhost:3001/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    
-    const data = await response.json();
-    if (data.success || response.ok) {
-      // SUCCESS LOGIN NOTIFICATION
-      setMessage("Login Successful.");
-      localStorage.setItem("token", data.token);
-      
-      // ADDED: Enhanced localStorage verification
-      try {
-        localStorage.setItem("user", JSON.stringify({ 
-          name: data.name, 
-          email: data.email,
-          userId: data.userId || data.id  // Use unique user ID
-        }));
-        
-        // ADDED: Verify user data was saved
-        const savedUser = JSON.parse(localStorage.getItem("user"));
-        console.log('User data saved to localStorage:', savedUser);
-        
-        if (!savedUser || !savedUser.email) {
-          console.error('❌ User data not saved properly!');
-          setError("Login data could not be saved. Please try again.");
-          return;
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/forgot-password`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            email: normalizedEmail
+          })
         }
-        
-        // Initialize user-specific sessions storage
-        const userSessionsKey = `mindease-sessions-${data.email}`;
-        const existingSessions = JSON.parse(localStorage.getItem(userSessionsKey)) || [];
-        
-        // Create a new session for logged-in user
-        const newSessionId = Date.now();
-        const newSession = {
-          id: newSessionId,
-          title: "Welcome Chat",
-          messages: [],
-          createdAt: new Date().toISOString(),
-          lastUpdated: new Date().toISOString()
-        };
-        
-        // Add new session to existing sessions
-        const updatedSessions = [newSession, ...existingSessions];
-        localStorage.setItem(userSessionsKey, JSON.stringify(updatedSessions));
-        console.log('User sessions initialized with new session:', updatedSessions);
-        console.log('New session created:', newSession);
-        console.log('Session key used:', userSessionsKey);
-        
-        // ADDED: Verify session storage
-        const verifySession = JSON.parse(localStorage.getItem(userSessionsKey));
-        console.log('Session storage verification:', verifySession);
-        console.log('Session storage length:', verifySession?.length || 0);
-        
-      } catch (storageError) {
-        console.error('❌ localStorage error:', storageError);
-        setError("Browser storage error. Please try again.");
+      );
+
+      const data =
+        await response.json();
+
+      if (response.ok) {
+        setMessage(
+          "A 6-digit verification code has been sent to your email."
+        );
+
+        setView("otp");
+
         return;
       }
-      
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1500); // Small delay so user sees the success message
-    } else {
-      setError(data.error || "Login failed");
+
+      setError(
+        data.error ||
+          "Failed to send verification code."
+      );
+
+    } catch (err) {
+      console.error(
+        "Forgot password error:",
+        err
+      );
+
+      setError(
+        "Unable to connect to the server."
+      );
+
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err) {
-    setError("Backend not reachable.");
-  }
-};
+  };
+
+  // =========================
+  // VERIFY OTP
+  // =========================
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+
+    clearMessages();
+
+    if (otp.length !== 6) {
+      setError(
+        "Please enter the 6-digit verification code."
+      );
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/verify-otp`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            email:
+              email.trim().toLowerCase(),
+            otp
+          })
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (response.ok) {
+        setMessage(
+          "Code verified successfully."
+        );
+
+        setView("reset");
+
+        return;
+      }
+
+      setError(
+        data.error ||
+          "Invalid verification code."
+      );
+
+    } catch (err) {
+      console.error(
+        "OTP verification error:",
+        err
+      );
+
+      setError(
+        "Unable to verify the code."
+      );
+
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // =========================
+  // RESET PASSWORD
+  // =========================
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+
+    clearMessages();
+
+    if (newPassword.length < 8) {
+      setError(
+        "Password must be at least 8 characters long."
+      );
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/reset-password`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            email:
+              email.trim().toLowerCase(),
+
+            otp,
+
+            newPassword
+          })
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (response.ok) {
+        setMessage(
+          "Password changed successfully. You can now sign in."
+        );
+
+        setTimeout(() => {
+          setView("signin");
+          setPassword("");
+          setNewPassword("");
+          setOtp("");
+          setMessage("");
+        }, 1800);
+
+        return;
+      }
+
+      setError(
+        data.error ||
+          "Unable to update password."
+      );
+
+    } catch (err) {
+      console.error(
+        "Reset password error:",
+        err
+      );
+
+      setError(
+        "Unable to connect to the server."
+      );
+
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // =========================
+  // STATUS ALERT
+  // =========================
+
+  const StatusAlert = () => {
+    if (!error && !message) {
+      return null;
+    }
+
+    const isError =
+      Boolean(error);
+
+    const text =
+      error || message;
+
+    return (
+      <AnimatePresence mode="wait">
+
+        <motion.div
+          key={text}
+          initial={{
+            opacity: 0,
+            y: -8
+          }}
+          animate={{
+            opacity: 1,
+            y: 0
+          }}
+          exit={{
+            opacity: 0,
+            y: -8
+          }}
+          style={{
+            display: "flex",
+            alignItems:
+              "flex-start",
+            gap: "10px",
+            padding: "12px 14px",
+            borderRadius: "12px",
+            marginBottom: "20px",
+
+            background:
+              isError
+                ? "rgba(239,68,68,0.10)"
+                : "rgba(16,185,129,0.10)",
+
+            border:
+              `1px solid ${
+                isError
+                  ? "rgba(239,68,68,0.25)"
+                  : "rgba(16,185,129,0.25)"
+              }`,
+
+            color:
+              isError
+                ? theme.error
+                : theme.success,
+
+            fontSize: "13px",
+
+            lineHeight: "1.5"
+          }}
+        >
+
+          {isError ? (
+            <AlertCircle
+              size={17}
+              style={{
+                flexShrink: 0,
+                marginTop: "1px"
+              }}
+            />
+          ) : (
+            <CheckCircle
+              size={17}
+              style={{
+                flexShrink: 0,
+                marginTop: "1px"
+              }}
+            />
+          )}
+
+          <span>{text}</span>
+
+        </motion.div>
+
+      </AnimatePresence>
+    );
+  };
+
+  // =========================
+  // CHANGE VIEW
+  // =========================
+
+  const changeView = (newView) => {
+    clearMessages();
+
+    setView(newView);
+  };
+
+  // =========================
+  // RENDER
+  // =========================
 
   return (
-    <div style={{ backgroundColor: theme.bg, color: theme.text, minHeight: "100vh", position: "relative", overflow: "hidden" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: theme.bg,
+        color: theme.text,
+        fontFamily:
+          "'Inter', 'Plus Jakarta Sans', sans-serif",
+        position: "relative",
+        overflow: "hidden"
+      }}
+    >
+
+      {/* Background glow */}
+
+      <div
+        style={{
+          position: "absolute",
+          width: "550px",
+          height: "550px",
+          borderRadius: "50%",
+          background:
+            "rgba(124,58,237,0.13)",
+          filter: "blur(120px)",
+          top: "-220px",
+          left: "-180px",
+          pointerEvents: "none"
+        }}
+      />
+
+      <div
+        style={{
+          position: "absolute",
+          width: "450px",
+          height: "450px",
+          borderRadius: "50%",
+          background:
+            "rgba(20,184,166,0.10)",
+          filter: "blur(120px)",
+          bottom: "-200px",
+          right: "-150px",
+          pointerEvents: "none"
+        }}
+      />
+
+      {/* ================= HEADER ================= */}
+
+      <header
+        style={{
+          position: "relative",
+          zIndex: 10,
+
+          borderBottom:
+            `1px solid ${theme.border}`,
+
+          background:
+            isDarkMode
+              ? "rgba(7,5,17,0.75)"
+              : "rgba(255,255,255,0.8)",
+
+          backdropFilter:
+            "blur(16px)"
+        }}
+      >
+
+        <div
+          className="container-fluid px-4 px-md-5 py-3 d-flex justify-content-between align-items-center"
+        >
+
+          {/* Brand */}
+
+          <div
+            onClick={() =>
+              navigate("/")
+            }
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              cursor: "pointer"
+            }}
+          >
+
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "12px",
+
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+
+                background:
+                  "linear-gradient(135deg,#7c3aed,#14b8a6)"
+              }}
+            >
+
+              <Brain
+                size={22}
+                color="#ffffff"
+              />
+
+            </div>
+
+            <div>
+
+              <div
+                style={{
+                  fontSize: "19px",
+                  fontWeight: "800",
+                  letterSpacing: "-0.4px"
+                }}
+              >
+                MindEase
+              </div>
+
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: theme.subtext,
+                  letterSpacing: "1px"
+                }}
+              >
+                MENTAL WELLNESS
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Theme */}
+
+          <button
+            type="button"
+            onClick={() =>
+              setIsDarkMode(
+                (prev) => !prev
+              )
+            }
+            style={{
+              width: "42px",
+              height: "42px",
+              borderRadius: "12px",
+              border:
+                `1px solid ${theme.border}`,
+              background:
+                theme.input,
+              color: theme.text,
+
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+
+              cursor: "pointer"
+            }}
+          >
+
+            {isDarkMode ? (
+              <Sun size={19} />
+            ) : (
+              <Moon size={19} />
+            )}
+
+          </button>
+
+        </div>
+
+      </header>
+
+      {/* ================= MAIN ================= */}
+
+      <main
+        className="container"
+        style={{
+          minHeight:
+            "calc(100vh - 73px)",
+
+          display: "flex",
+          alignItems: "center",
+
+          paddingTop: "45px",
+          paddingBottom: "45px",
+
+          position: "relative",
+          zIndex: 2
+        }}
+      >
+
+        <div
+          className="row w-100 align-items-center g-5"
+        >
+
+          {/* ================= LEFT SIDE ================= */}
+
+          <div
+            className="col-lg-6 d-none d-lg-block"
+          >
+
+            <motion.div
+              initial={{
+                opacity: 0,
+                x: -30
+              }}
+              animate={{
+                opacity: 1,
+                x: 0
+              }}
+              transition={{
+                duration: 0.6
+              }}
+              style={{
+                maxWidth: "500px"
+              }}
+            >
+
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "7px",
+
+                  padding:
+                    "7px 12px",
+
+                  borderRadius:
+                    "50px",
+
+                  background:
+                    theme.cardSecondary,
+
+                  border:
+                    `1px solid ${theme.border}`,
+
+                  color:
+                    theme.accent,
+
+                  fontSize: "12px",
+                  fontWeight: "700",
+
+                  marginBottom: "22px"
+                }}
+              >
+
+                <Sparkles size={14} />
+
+                WELCOME BACK
+
+              </div>
+
+              <h1
+                style={{
+                  fontSize:
+                    "clamp(38px, 4vw, 58px)",
+
+                  lineHeight: "1.05",
+
+                  fontWeight: "800",
+
+                  letterSpacing: "-2px",
+
+                  marginBottom: "22px"
+                }}
+              >
+
+                Your safe space
+                <br />
+
+                is always
+                <span
+                  style={{
+                    background:
+                      "linear-gradient(90deg,#7c3aed,#14b8a6)",
+
+                    WebkitBackgroundClip:
+                      "text",
+
+                    WebkitTextFillColor:
+                      "transparent"
+                  }}
+                >
+                  {" "}here.
+                </span>
+
+              </h1>
+
+              <p
+                style={{
+                  color: theme.subtext,
+                  fontSize: "16px",
+                  lineHeight: "1.8",
+                  maxWidth: "450px",
+                  marginBottom: "32px"
+                }}
+              >
+                Continue your MindEase journey.
+                Your personalized mental wellness
+                space is waiting for you.
+              </p>
+
+              {/* Security card */}
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "15px",
+
+                  padding: "18px",
+
+                  borderRadius: "16px",
+
+                  background:
+                    theme.cardSecondary,
+
+                  border:
+                    `1px solid ${theme.border}`,
+
+                  maxWidth: "410px"
+                }}
+              >
+
+                <div
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    minWidth: "44px",
+
+                    borderRadius: "13px",
+
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+
+                    background:
+                      "rgba(20,184,166,0.10)",
+
+                    color:
+                      theme.accent
+                  }}
+                >
+
+                  <ShieldCheck
+                    size={21}
+                  />
+
+                </div>
+
+                <div>
+
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "700",
+                      marginBottom: "3px"
+                    }}
+                  >
+                    Your privacy matters
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: theme.subtext,
+                      lineHeight: "1.5"
+                    }}
+                  >
+                    Your account and conversations
+                    are protected.
+                  </div>
+
+                </div>
+
+              </div>
+
+            </motion.div>
+
+          </div>
+
+          {/* ================= RIGHT SIDE ================= */}
+
+          <div
+            className="col-lg-6 d-flex justify-content-center"
+          >
+
+            <AnimatePresence mode="wait">
+
+              {/* ================= SIGN IN ================= */}
+
+              {view === "signin" && (
+
+                <motion.div
+                  key="signin"
+
+                  initial={{
+                    opacity: 0,
+                    y: 20
+                  }}
+
+                  animate={{
+                    opacity: 1,
+                    y: 0
+                  }}
+
+                  exit={{
+                    opacity: 0,
+                    x: -20
+                  }}
+
+                  transition={{
+                    duration: 0.35
+                  }}
+
+                  style={{
+                    width: "100%",
+                    maxWidth: "470px",
+
+                    background:
+                      theme.card,
+
+                    border:
+                      `1px solid ${theme.border}`,
+
+                    borderRadius: "24px",
+
+                    padding: "34px",
+
+                    boxShadow:
+                      isDarkMode
+                        ? "0 30px 80px rgba(0,0,0,0.35)"
+                        : "0 30px 80px rgba(30,27,75,0.10)",
+
+                    backdropFilter:
+                      "blur(20px)"
+                  }}
+                >
+
+                  <CardHeader
+                    icon={
+                      <ShieldCheck
+                        size={21}
+                      />
+                    }
+                    title="Welcome back"
+                    subtitle="Sign in to continue to your MindEase dashboard."
+                    theme={theme}
+                  />
+
+                  <StatusAlert />
+
+                  <form
+                    onSubmit={handleLogin}
+                  >
+
+                    <InputField
+                      label="Email address"
+                      icon={
+                        <Mail size={18} />
+                      }
+                      theme={theme}
+                    >
+
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(
+                            e.target.value
+                          );
+                          setError("");
+                        }}
+                        placeholder="you@gmail.com"
+                        className="mindease-input"
+                        required
+                      />
+
+                    </InputField>
+
+                    <InputField
+                      label="Password"
+                      icon={
+                        <Lock size={18} />
+                      }
+                      theme={theme}
+                    >
+
+                      <div
+                        style={{
+                          position:
+                            "relative"
+                        }}
+                      >
+
+                        <input
+                          type={
+                            showPassword
+                              ? "text"
+                              : "password"
+                          }
+                          value={password}
+                          onChange={(e) => {
+                            setPassword(
+                              e.target.value
+                            );
+                            setError("");
+                          }}
+                          placeholder="Enter your password"
+                          className="mindease-input"
+                          style={{
+                            paddingRight:
+                              "48px"
+                          }}
+                          required
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowPassword(
+                              (prev) =>
+                                !prev
+                            )
+                          }
+                          className="password-toggle"
+                        >
+
+                          {showPassword ? (
+                            <EyeOff
+                              size={18}
+                            />
+                          ) : (
+                            <Eye
+                              size={18}
+                            />
+                          )}
+
+                        </button>
+
+                      </div>
+
+                    </InputField>
+
+                    <div
+                      style={{
+                        textAlign:
+                          "right",
+                        marginTop:
+                          "-8px",
+                        marginBottom:
+                          "22px"
+                      }}
+                    >
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          changeView(
+                            "forgot"
+                          )
+                        }
+                        style={{
+                          border:
+                            "none",
+                          background:
+                            "transparent",
+                          color:
+                            theme.primary,
+                          fontSize:
+                            "13px",
+                          fontWeight:
+                            "700",
+                          cursor:
+                            "pointer",
+                          padding: 0
+                        }}
+                      >
+                        Forgot password?
+                      </button>
+
+                    </div>
+
+                    <PrimaryButton
+                      loading={
+                        isLoading
+                      }
+                      loadingText="Signing in..."
+                      text="Sign In"
+                      icon={
+                        <ArrowRight
+                          size={18}
+                        />
+                      }
+                    />
+
+                  </form>
+
+                  <Divider
+                    theme={theme}
+                  />
+
+                  <div
+                    style={{
+                      textAlign:
+                        "center",
+                      color:
+                        theme.subtext,
+                      fontSize:
+                        "13px"
+                    }}
+                  >
+
+                    Don't have an account?{" "}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          "/register"
+                        )
+                      }
+                      style={{
+                        border:
+                          "none",
+                        background:
+                          "transparent",
+                        color:
+                          theme.primary,
+                        fontWeight:
+                          "700",
+                        cursor:
+                          "pointer",
+                        padding: 0
+                      }}
+                    >
+                      Create account
+                    </button>
+
+                  </div>
+
+                </motion.div>
+              )}
+
+              {/* ================= FORGOT ================= */}
+
+              {view === "forgot" && (
+
+                <motion.div
+                  key="forgot"
+
+                  initial={{
+                    opacity: 0,
+                    x: 20
+                  }}
+
+                  animate={{
+                    opacity: 1,
+                    x: 0
+                  }}
+
+                  exit={{
+                    opacity: 0,
+                    x: -20
+                  }}
+
+                  transition={{
+                    duration: 0.35
+                  }}
+
+                  style={{
+                    width: "100%",
+                    maxWidth: "470px",
+                    background:
+                      theme.card,
+                    border:
+                      `1px solid ${theme.border}`,
+                    borderRadius: "24px",
+                    padding: "34px",
+                    boxShadow:
+                      isDarkMode
+                        ? "0 30px 80px rgba(0,0,0,0.35)"
+                        : "0 30px 80px rgba(30,27,75,0.10)",
+                    backdropFilter:
+                      "blur(20px)"
+                  }}
+                >
+
+                  <CardHeader
+                    icon={
+                      <KeyRound
+                        size={21}
+                      />
+                    }
+                    title="Reset your password"
+                    subtitle="Enter your email and we'll send you a verification code."
+                    theme={theme}
+                  />
+
+                  <StatusAlert />
+
+                  <form
+                    onSubmit={
+                      handleRequestOTP
+                    }
+                  >
+
+                    <InputField
+                      label="Email address"
+                      icon={
+                        <Mail size={18} />
+                      }
+                      theme={theme}
+                    >
+
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(
+                            e.target.value
+                          );
+                          setError("");
+                        }}
+                        placeholder="you@gmail.com"
+                        className="mindease-input"
+                        required
+                      />
+
+                    </InputField>
+
+                    <PrimaryButton
+                      loading={
+                        isLoading
+                      }
+                      loadingText="Sending code..."
+                      text="Send Verification Code"
+                    />
+
+                  </form>
+
+                  <BackButton
+                    onClick={() =>
+                      changeView(
+                        "signin"
+                      )
+                    }
+                    text="Back to Sign In"
+                    theme={theme}
+                  />
+
+                </motion.div>
+              )}
+
+              {/* ================= OTP ================= */}
+
+              {view === "otp" && (
+
+                <motion.div
+                  key="otp"
+
+                  initial={{
+                    opacity: 0,
+                    scale: 0.96
+                  }}
+
+                  animate={{
+                    opacity: 1,
+                    scale: 1
+                  }}
+
+                  transition={{
+                    duration: 0.35
+                  }}
+
+                  style={{
+                    width: "100%",
+                    maxWidth: "470px",
+                    background:
+                      theme.card,
+                    border:
+                      `1px solid ${theme.border}`,
+                    borderRadius: "24px",
+                    padding: "34px",
+                    boxShadow:
+                      isDarkMode
+                        ? "0 30px 80px rgba(0,0,0,0.35)"
+                        : "0 30px 80px rgba(30,27,75,0.10)",
+                    backdropFilter:
+                      "blur(20px)"
+                  }}
+                >
+
+                  <CardHeader
+                    icon={
+                      <ShieldCheck
+                        size={21}
+                      />
+                    }
+                    title="Verify your code"
+                    subtitle={`Enter the 6-digit code sent to ${email}.`}
+                    theme={theme}
+                  />
+
+                  <StatusAlert />
+
+                  <form
+                    onSubmit={
+                      handleVerifyOTP
+                    }
+                  >
+
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength="6"
+                      value={otp}
+                      onChange={(e) => {
+                        const value =
+                          e.target.value.replace(
+                            /\D/g,
+                            ""
+                          );
+
+                        setOtp(value);
+                        setError("");
+                      }}
+                      placeholder="000000"
+                      className="mindease-input otp-input"
+                      required
+                    />
+
+                    <PrimaryButton
+                      loading={
+                        isLoading
+                      }
+                      loadingText="Verifying..."
+                      text="Verify Code"
+                      disabled={
+                        otp.length !== 6
+                      }
+                      icon={
+                        <ArrowRight
+                          size={18}
+                        />
+                      }
+                    />
+
+                  </form>
+
+                  <BackButton
+                    onClick={() =>
+                      changeView(
+                        "forgot"
+                      )
+                    }
+                    text="Use another email"
+                    theme={theme}
+                  />
+
+                </motion.div>
+              )}
+
+              {/* ================= RESET ================= */}
+
+              {view === "reset" && (
+
+                <motion.div
+                  key="reset"
+
+                  initial={{
+                    opacity: 0,
+                    y: 20
+                  }}
+
+                  animate={{
+                    opacity: 1,
+                    y: 0
+                  }}
+
+                  transition={{
+                    duration: 0.35
+                  }}
+
+                  style={{
+                    width: "100%",
+                    maxWidth: "470px",
+                    background:
+                      theme.card,
+                    border:
+                      `1px solid ${theme.border}`,
+                    borderRadius: "24px",
+                    padding: "34px",
+                    boxShadow:
+                      isDarkMode
+                        ? "0 30px 80px rgba(0,0,0,0.35)"
+                        : "0 30px 80px rgba(30,27,75,0.10)",
+                    backdropFilter:
+                      "blur(20px)"
+                  }}
+                >
+
+                  <CardHeader
+                    icon={
+                      <Lock
+                        size={21}
+                      />
+                    }
+                    title="Create a new password"
+                    subtitle="Choose a strong password for your MindEase account."
+                    theme={theme}
+                  />
+
+                  <StatusAlert />
+
+                  <form
+                    onSubmit={
+                      handleResetPassword
+                    }
+                  >
+
+                    <InputField
+                      label="New password"
+                      icon={
+                        <Lock size={18} />
+                      }
+                      theme={theme}
+                    >
+
+                      <div
+                        style={{
+                          position:
+                            "relative"
+                        }}
+                      >
+
+                        <input
+                          type={
+                            showNewPassword
+                              ? "text"
+                              : "password"
+                          }
+                          value={
+                            newPassword
+                          }
+                          onChange={(e) => {
+                            setNewPassword(
+                              e.target.value
+                            );
+                            setError("");
+                          }}
+                          placeholder="Enter new password"
+                          className="mindease-input"
+                          style={{
+                            paddingRight:
+                              "48px"
+                          }}
+                          required
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowNewPassword(
+                              (prev) =>
+                                !prev
+                            )
+                          }
+                          className="password-toggle"
+                        >
+
+                          {showNewPassword ? (
+                            <EyeOff
+                              size={18}
+                            />
+                          ) : (
+                            <Eye
+                              size={18}
+                            />
+                          )}
+
+                        </button>
+
+                      </div>
+
+                    </InputField>
+
+                    <div
+                      style={{
+                        color:
+                          theme.subtext,
+                        fontSize:
+                          "12px",
+                        marginTop:
+                          "-8px",
+                        marginBottom:
+                          "20px"
+                      }}
+                    >
+                      Minimum 8 characters.
+                    </div>
+
+                    <PrimaryButton
+                      loading={
+                        isLoading
+                      }
+                      loadingText="Updating..."
+                      text="Update Password"
+                      icon={
+                        <CheckCircle
+                          size={18}
+                        />
+                      }
+                      disabled={
+                        newPassword.length <
+                        8
+                      }
+                    />
+
+                  </form>
+
+                </motion.div>
+              )}
+
+            </AnimatePresence>
+
+          </div>
+
+        </div>
+
+      </main>
+
+      {/* ================= STYLES ================= */}
+
       <style>{`
-        .dynamic-brand { background: linear-gradient(90deg, #b2d8d0, #7c3aed, #b2d8d0); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: gradientFlow 4s linear infinite; cursor: pointer; }
-        @keyframes gradientFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        .glass-input { background: ${theme.input}; border: 1px solid ${theme.border}; color: ${theme.text}; padding: 12px 15px 12px 45px; border-radius: 12px; width: 100%; outline: none; transition: 0.3s; }
-        .glass-input:focus { border-color: ${theme.primary}; box-shadow: 0 0 15px rgba(124,58,237,0.2); }
-        .input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: ${theme.primary}; opacity: 0.7; }
+
+        .mindease-input {
+          width: 100%;
+          height: 50px;
+          padding: 0 15px;
+          border-radius: 11px;
+          border: 1px solid ${theme.border};
+          background: ${theme.input};
+          color: ${theme.text};
+          outline: none;
+          font-size: 14px;
+          transition: all 0.2s ease;
+        }
+
+        .mindease-input::placeholder {
+          color: ${theme.subtext};
+        }
+
+        .mindease-input:focus {
+          border-color: ${theme.primary};
+
+          box-shadow:
+            0 0 0 3px
+            rgba(124,58,237,0.12);
+        }
+
+        .password-toggle {
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform:
+            translateY(-50%);
+          border: none;
+          background: transparent;
+          color: ${theme.subtext};
+          cursor: pointer;
+          padding: 0;
+          display: flex;
+        }
+
+        .password-toggle:hover {
+          color: ${theme.primary};
+        }
+
+        .otp-input {
+          text-align: center;
+          font-size: 26px;
+          font-weight: 800;
+          letter-spacing: 10px;
+          margin-bottom: 20px;
+        }
+
+        @media (max-width: 576px) {
+
+          .otp-input {
+            letter-spacing: 6px;
+          }
+
+        }
+
       `}</style>
 
-      {/* Navbar */}
-      <nav className="navbar fixed-top px-4 py-3" style={{ backdropFilter: "blur(10px)", zIndex: 100 }}>
-        <div className="container-fluid d-flex justify-content-between align-items-center">
-          <div className="d-flex align-items-center gap-2" onClick={() => navigate("/")} style={{cursor:'pointer'}}>
-            <Brain size={30} color={theme.primary} />
-            <span className="fw-bold fs-4 dynamic-brand">MindEase</span>
-          </div>
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="btn p-0 border-0" style={{ color: theme.text }}>
-            {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
-          </button>
-        </div>
-      </nav>
-
-      <div className="container d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
-        <AnimatePresence mode="wait">
-          {/* --- SIGN IN VIEW --- */}
-          {view === "signin" && (
-            <motion.div key="signin" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
-              className="p-5 rounded-5 border shadow-lg w-100" style={{ maxWidth: '420px', backgroundColor: theme.card, borderColor: theme.border, backdropFilter: "blur(20px)" }}>
-              <div className="text-center mb-4">
-                <h2 className="fw-bold mb-2">Welcome Back</h2>
-                <p className="small" style={{ color: theme.subtext }}>Log in to your MindEase Dashboard</p>
-              </div>
-              {error && <div className="alert alert-danger py-2 px-3 small d-flex align-items-center gap-2 mb-3"><AlertCircle size={14} /> {error}</div>}
-              {message && <div className="alert alert-success py-2 px-3 small d-flex align-items-center gap-2 mb-3"><CheckCircle size={14} /> {message}</div>}
-              <form onSubmit={handleLogin}>
-                <div className="mb-3 position-relative"><Mail className="input-icon" size={18} /><input type="email" placeholder="Email Address" required className="glass-input" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-                <div className="mb-2 position-relative"><Lock className="input-icon" size={18} /><input type="password" placeholder="Password" required className="glass-input" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-                <div className="text-end mb-4"><span onClick={() => setView("forgot")} style={{ color: theme.primary, fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>Forgot Password?</span></div>
-                <button type="submit" className="btn btn-lg w-100 py-3 fw-bold d-flex align-items-center justify-content-center gap-2 mb-4 shadow-sm" style={{ backgroundColor: theme.primary, color: "#ffffff", borderRadius: "14px", border: 'none' }}>Sign In <ArrowRight size={20} /></button>
-                <p className="text-center small mb-0" style={{ color: theme.subtext }}>Don't have an account? <span onClick={() => navigate("/register")} style={{ color: theme.primary, cursor: "pointer", fontWeight: "700" }}>Sign Up</span></p>
-              </form>
-            </motion.div>
-          )}
-
-          {/* --- FORGOT PASSWORD --- */}
-          {view === "forgot" && (
-            <motion.div key="forgot" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-              className="p-5 rounded-5 border shadow-lg w-100" style={{ maxWidth: '420px', backgroundColor: theme.card, borderColor: theme.border, backdropFilter: "blur(20px)" }}>
-              <div className="text-center mb-4">
-                <h2 className="fw-bold mb-2">Recovery</h2>
-                <p className="small" style={{ color: theme.subtext }}>Enter your email to receive a reset code</p>
-              </div>
-              {error && <div className="alert alert-danger py-2 px-3 small mb-3">{error}</div>}
-              {message && <div className="alert alert-success py-2 px-3 small mb-3">{message}</div>}
-              <form onSubmit={handleRequestOTP}>
-                <div className="mb-4 position-relative"><Mail className="input-icon" size={18} /><input type="email" placeholder="Email Address" required className="glass-input" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-                <button type="submit" className="btn btn-lg w-100 py-3 fw-bold mb-4" style={{ backgroundColor: theme.primary, color: "#ffffff", borderRadius: "14px", border: 'none' }}>Send Reset Code</button>
-                <p className="text-center small mb-0"><span onClick={() => setView("signin")} style={{ color: theme.primary, cursor: "pointer", fontWeight: "700" }}>Back to Login</span></p>
-              </form>
-            </motion.div>
-          )}
-
-          {/* --- OTP VERIFICATION --- */}
-          {view === "otp" && (
-            <motion.div key="otp" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-              className="p-5 rounded-5 border shadow-lg w-100" style={{ maxWidth: '420px', backgroundColor: theme.card, borderColor: theme.border }}>
-              <div className="text-center mb-4"><ShieldCheck size={50} color={theme.primary} className="mb-2"/><h2 className="fw-bold">Verify Code</h2><p className="small" style={{ color: theme.subtext }}>Enter the code sent to your email</p></div>
-              {error && <div className="alert alert-danger small mb-3">{error}</div>}
-              <form onSubmit={handleVerifyOTP}>
-                <input type="text" placeholder="------" maxLength="6" required className="glass-input text-center fs-4 mb-4" style={{ letterSpacing: '8px' }} value={otp} onChange={(e) => setOtp(e.target.value)} />
-                <button type="submit" className="btn btn-lg w-100 py-3 fw-bold mb-3" style={{ backgroundColor: theme.primary, color: "#ffffff", borderRadius: "14px", border: 'none' }}>Verify Code</button>
-              </form>
-            </motion.div>
-          )}
-
-          {/* --- RESET PASSWORD --- */}
-          {view === "reset" && (
-            <motion.div key="reset" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              className="p-5 rounded-5 border shadow-lg w-100" style={{ maxWidth: '420px', backgroundColor: theme.card, borderColor: theme.border }}>
-              <div className="text-center mb-4"><h2 className="fw-bold">Reset Password</h2><p className="small" style={{ color: theme.subtext }}>Create a secure new password</p></div>
-              {error && <div className="alert alert-danger small mb-3">{error}</div>}
-              {message && <div className="alert alert-success small mb-3">{message}</div>}
-              <form onSubmit={handleResetPassword}>
-                <div className="mb-4 position-relative"><Lock className="input-icon" size={18} /><input type="password" placeholder="New Password" required className="glass-input" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></div>
-                <button type="submit" className="btn btn-lg w-100 py-3 fw-bold" style={{ backgroundColor: theme.primary, color: "#ffffff", borderRadius: "14px", border: 'none' }}>Update Password</button>
-              </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
     </div>
+  );
+};
+
+
+// ======================================
+// CARD HEADER
+// ======================================
+
+const CardHeader = ({
+  icon,
+  title,
+  subtitle,
+  theme
+}) => {
+
+  return (
+    <div
+      style={{
+        marginBottom: "27px"
+      }}
+    >
+
+      <div
+        style={{
+          width: "44px",
+          height: "44px",
+          borderRadius: "13px",
+
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+
+          background:
+            "rgba(124,58,237,0.10)",
+
+          color:
+            theme.primary,
+
+          marginBottom: "17px"
+        }}
+      >
+        {icon}
+      </div>
+
+      <h2
+        style={{
+          fontSize: "27px",
+          fontWeight: "800",
+          letterSpacing: "-0.7px",
+          marginBottom: "7px"
+        }}
+      >
+        {title}
+      </h2>
+
+      <p
+        style={{
+          color: theme.subtext,
+          fontSize: "13px",
+          lineHeight: "1.6",
+          margin: 0
+        }}
+      >
+        {subtitle}
+      </p>
+
+    </div>
+  );
+};
+
+
+// ======================================
+// INPUT FIELD
+// ======================================
+
+const InputField = ({
+  label,
+  icon,
+  theme,
+  children
+}) => {
+
+  return (
+    <div
+      style={{
+        marginBottom: "20px"
+      }}
+    >
+
+      <label
+        style={{
+          display: "block",
+          color: theme.subtext,
+          fontSize: "11px",
+          fontWeight: "700",
+          letterSpacing: "0.6px",
+          textTransform: "uppercase",
+          marginBottom: "7px"
+        }}
+      >
+        {label}
+      </label>
+
+      <div
+        style={{
+          position: "relative"
+        }}
+      >
+
+        {React.cloneElement(
+          icon,
+          {
+            style: {
+              position:
+                "absolute",
+              left: "14px",
+              top: "50%",
+              transform:
+                "translateY(-50%)",
+              color:
+                theme.subtext,
+              pointerEvents:
+                "none",
+              zIndex: 2
+            }
+          }
+        )}
+
+        <div
+          style={{
+            paddingLeft: "30px"
+          }}
+        >
+          {children}
+        </div>
+
+      </div>
+
+    </div>
+  );
+};
+
+
+// ======================================
+// PRIMARY BUTTON
+// ======================================
+
+const PrimaryButton = ({
+  loading,
+  loadingText,
+  text,
+  icon,
+  disabled = false
+}) => {
+
+  return (
+    <button
+      type="submit"
+      disabled={
+        loading || disabled
+      }
+      style={{
+        width: "100%",
+        height: "52px",
+
+        border: "none",
+        borderRadius: "13px",
+
+        background:
+          "linear-gradient(135deg,#7c3aed,#6d28d9)",
+
+        color: "#ffffff",
+
+        fontSize: "14px",
+        fontWeight: "750",
+
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "9px",
+
+        cursor:
+          loading || disabled
+            ? "not-allowed"
+            : "pointer",
+
+        opacity:
+          loading || disabled
+            ? 0.65
+            : 1,
+
+        boxShadow:
+          "0 10px 25px rgba(124,58,237,0.22)"
+      }}
+    >
+
+      {loading ? (
+        <>
+          <Loader2
+            size={18}
+            style={{
+              animation:
+                "mindeaseSpin 1s linear infinite"
+            }}
+          />
+
+          {loadingText}
+        </>
+      ) : (
+        <>
+          {text}
+
+          {icon && icon}
+        </>
+      )}
+
+    </button>
+  );
+};
+
+
+// ======================================
+// BACK BUTTON
+// ======================================
+
+const BackButton = ({
+  onClick,
+  text,
+  theme
+}) => {
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: "100%",
+        marginTop: "18px",
+        border: "none",
+        background: "transparent",
+        color: theme.primary,
+        fontSize: "13px",
+        fontWeight: "700",
+        cursor: "pointer"
+      }}
+    >
+      ← {text}
+    </button>
+  );
+};
+
+
+// ======================================
+// DIVIDER
+// ======================================
+
+const Divider = ({
+  theme
+}) => {
+
+  return (
+    <div
+      style={{
+        height: "1px",
+        background:
+          theme.border,
+        margin:
+          "25px 0 20px"
+      }}
+    />
   );
 };
 

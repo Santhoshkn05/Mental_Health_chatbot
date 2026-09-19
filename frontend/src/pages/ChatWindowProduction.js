@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Brain, Send, Mic, MicOff, User, Bot, Volume2, VolumeX, AlertTriangle } from "lucide-react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
 const ChatWindowProduction = ({ activeSessionId, sessions, setSessions, theme, defaultQueries, isSidebarOpen }) => {
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -84,7 +86,7 @@ const ChatWindowProduction = ({ activeSessionId, sessions, setSessions, theme, d
 
     try {
       // Call production-ready Node.js backend
-      const response = await fetch('http://localhost:3001/api/chats', {
+      const response = await fetch(`${API_URL}/api/chats`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

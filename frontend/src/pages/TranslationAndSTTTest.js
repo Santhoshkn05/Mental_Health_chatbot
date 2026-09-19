@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 
+const AI_API_URL = process.env.REACT_APP_AI_API_URL || 'http://localhost:5001';
+
 /**
  * TranslationAndSTTTest Component
  * Tests Speech-to-Text (Whisper) and Translation (LibreTranslate)
@@ -37,7 +39,7 @@ export default function TranslationAndSTTTest() {
     setMessage('Translating...');
 
     try {
-      const response = await fetch('http://localhost:5001/translate', {
+      const response = await fetch(`${AI_API_URL}/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -119,7 +121,7 @@ export default function TranslationAndSTTTest() {
       formData.append('audio', audioFile, 'audio.wav');
       formData.append('language', 'auto');
 
-      const response = await fetch('http://localhost:5001/speech-to-text', {
+      const response = await fetch(`${AI_API_URL}/speech-to-text`, {
         method: 'POST',
         body: formData
       });

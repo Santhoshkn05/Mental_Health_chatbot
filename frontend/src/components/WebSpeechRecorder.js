@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+const AI_API_URL = process.env.REACT_APP_AI_API_URL || 'http://localhost:5001';
+
 /**
  * Web Speech API Component
  * Speech-to-Text with language support (English, Hindi, Telugu)
@@ -123,7 +125,7 @@ const WebSpeechRecorder = ({ onTranscriptReceived }) => {
     try {
       console.log('[CHAT] Sending:', transcript);
       
-      const response = await fetch('http://localhost:5001/chat', {
+      const response = await fetch(`${AI_API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

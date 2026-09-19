@@ -86,7 +86,7 @@ const Landing = () => {
 
           {/* Updated Sign In Button */}
           <button 
-            className="btn fw-bold px-4 py-2 shadow-sm" 
+            className="btn fw-bold px-4 py-2 shadow-sm me-2" 
             onClick={() => navigate("/login")} // This matches the path in App.js
             style={{ 
               backgroundColor: theme.primary, 
@@ -96,6 +96,28 @@ const Landing = () => {
             }}
           >
             Sign In
+          </button>
+
+          {/* Admin Button */}
+          <button 
+            className="btn fw-bold px-4 py-2 shadow-sm" 
+            onClick={() => navigate("/admin/login")} 
+            style={{ 
+              backgroundColor: "rgba(124, 58, 237, 0.1)",
+              borderRadius: "12px", 
+              color: theme.text, 
+              border: `1px solid ${theme.border}`,
+              transition: "all 0.3s ease"
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = "rgba(124, 58, 237, 0.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = "rgba(124, 58, 237, 0.1)";
+            }}
+          >
+            <Shield size={16} />
+            <span className="ms-2">Admin</span>
           </button>
         </div>
       </div>
